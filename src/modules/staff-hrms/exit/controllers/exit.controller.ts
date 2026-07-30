@@ -1,0 +1,51 @@
+import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { ExitService } from '../services/exit.service';
+import { InitiateExitDto } from '../dto/initiate-exit.dto';
+import { ProcessSettlementDto } from '../dto/process-settlement.dto';
+
+@Controller('staff-hrms/exit')
+export class ExitController {
+  constructor(private readonly exitService: ExitService) {}
+
+  @Get('exits')
+  async getExits() {
+    return this.exitService.getExits();
+  }
+
+  @Post('exits/initiate')
+  async initiateExit(@Body() dto: InitiateExitDto) {
+    return this.exitService.initiateExit(dto);
+  }
+
+  @Patch('clearances/:id/status')
+  async updateClearance(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('clearedBy') clearedBy?: string,
+  ) {
+    return this.exitService.updateClearance(id, status, clearedBy);
+  }
+
+  @Post('settlements')
+  async processSettlement(@Body() dto: ProcessSettlementDto) {
+    return this.exitService.processSettlement(dto);
+  }
+
+  @Post('exits/:id/complete')
+  async completeExit(@Param('id') id: string) {
+    return this.exitService.completeExit(id);
+  }
+
+  @Patch('exits/:id')
+  async updateExit(
+    @Param('id') id: string,
+    @Body() body: { type?: string; resignationDate?: string; noticePeriodDays?: number; lastWorkingDay?: string; reason?: string },
+  ) {
+    return this.exitService.updateExit(id, body);
+  }
+
+  @Delete('exits/:id')
+  async deleteExit(@Param('id') id: string) {
+    return this.exitService.deleteExit(id);
+  }
+}
