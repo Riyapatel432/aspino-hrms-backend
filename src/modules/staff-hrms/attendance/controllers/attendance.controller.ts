@@ -53,7 +53,7 @@ export class AttendanceController {
     return this.attendanceService.getAttendance();
   }
 
-  @Post('attendance/capture')
+  @Post('attendance')
   async captureAttendance(@Body() dto: CaptureAttendanceDto) {
     return this.attendanceService.captureAttendance(dto);
   }
