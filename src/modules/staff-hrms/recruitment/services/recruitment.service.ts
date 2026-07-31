@@ -29,6 +29,23 @@ export class RecruitmentService {
     return this.recruitmentRepository.deleteDepartment(id);
   }
 
+  // Training Types
+  async getTrainingTypes() {
+    return this.recruitmentRepository.findManyTrainingTypes();
+  }
+
+  async createTrainingType(name: string) {
+    return this.recruitmentRepository.createTrainingType(name);
+  }
+
+  async updateTrainingType(id: string, name: string) {
+    return this.recruitmentRepository.updateTrainingType(id, name);
+  }
+
+  async deleteTrainingType(id: string) {
+    return this.recruitmentRepository.deleteTrainingType(id);
+  }
+
   // 1. Job Requisition
   async getRequisitions(page: number, limit: number, search?: string, status?: string) {
     return this.recruitmentRepository.findManyRequisitions(page, limit, search, status);

@@ -78,6 +78,11 @@ export function generateOfferLetterPdf(filePath: string, data: OfferPdfData): Pr
         `We are pleased to extend to you a formal offer of employment for the position of ${data.role} at Aspino Chemicals Corp. Following our comprehensive interview process and review of your professional accomplishments, we are confident that your technical expertise, qualifications, and industry knowledge will make a substantial contribution to the success and strategic objectives of our organization.`,
         { align: 'justify', lineGap: 3 }
       );
+      doc.moveDown(0.8);
+      doc.text(
+        `Under this appointment, your Annual CTC (Cost to Company) will be Rs. ${data.salary.toLocaleString('en-IN')} per annum, subject to statutory deductions as applicable. The detailed breakdown and joining requirements are outlined below.`,
+        { align: 'justify', lineGap: 3 }
+      );
       doc.moveDown(1.5);
 
       // ----------------------------------------------------
@@ -97,7 +102,7 @@ export function generateOfferLetterPdf(filePath: string, data: OfferPdfData): Pr
 
       const row2Top = tableTop + 22;
       doc.rect(50, row2Top, 495, 22).fill('#ffffff');
-      doc.fillColor('#475569').font('Helvetica-Bold').text('Annual Compensation (CTC)', col1X, row2Top + 6);
+      doc.fillColor('#475569').font('Helvetica-Bold').text('Annual CTC (INR)', col1X, row2Top + 6);
       doc.fillColor('#0f172a').font('Helvetica').text(`Rs. ${data.salary.toLocaleString('en-IN')} / annum`, col2X, row2Top + 6);
 
       const row3Top = row2Top + 22;

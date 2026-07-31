@@ -1,10 +1,15 @@
-import { Controller, Get, Post, Delete, Body, Patch, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Patch, Param, UseGuards } from '@nestjs/common';
 import { LeaveService } from '../services/leave.service';
 import { CreateHolidayDto } from '../dto/create-holiday.dto';
 import { ApplyLeaveDto } from '../dto/apply-leave.dto';
 import { CreateLeaveMasterDto } from '../dto/create-leave-master.dto';
+import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../auth/guards/roles.guard';
+import { Roles } from '../../../../auth/decorators/roles.decorator';
 
 @Controller('staff-hrms/leave')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('hr')
 export class LeaveController {
   constructor(private readonly leaveService: LeaveService) { }
 

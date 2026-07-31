@@ -53,6 +53,12 @@ model Department {
   requisitions JobRequisition[]
 }
 
+model TrainingType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model JobRequisition {
   id            String      @id @default(uuid())
   title         String

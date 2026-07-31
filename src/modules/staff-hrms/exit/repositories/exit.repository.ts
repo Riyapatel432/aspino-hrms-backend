@@ -7,7 +7,13 @@ export class ExitRepository {
 
   async findManyExits() {
     return this.prisma.exitProcess.findMany({
-      include: { employee: true, clearances: true, settlement: true },
+      include: { 
+        employee: {
+          include: { leaveBalances: true }
+        }, 
+        clearances: true, 
+        settlement: true 
+      },
     });
   }
 

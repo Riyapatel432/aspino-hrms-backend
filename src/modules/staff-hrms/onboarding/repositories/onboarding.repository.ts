@@ -70,7 +70,10 @@ export class OnboardingRepository {
   async updateProbation(id: string, status: string) {
     const employee = await this.prisma.employee.update({
       where: { id },
-      data: { probationStatus: status },
+      data: { 
+        probationStatus: status,
+        ...(status === 'CONFIRMED' ? { status: 'ACTIVE' } : {})
+      },
     });
 
     if (status === 'CONFIRMED') {
@@ -125,11 +128,24 @@ export class OnboardingRepository {
   }
 
   async deleteEmployee(id: string) {
-    // Delete related records first
+    // Delete related records first to avoid foreign key constraint violations
     await this.prisma.onboardingDocument.deleteMany({ where: { employeeId: id } });
     await this.prisma.inductionSchedule.deleteMany({ where: { employeeId: id } });
     await this.prisma.systemAccess.deleteMany({ where: { employeeId: id } });
     await this.prisma.leaveBalance.deleteMany({ where: { employeeId: id } });
+    await this.prisma.shiftRoster.deleteMany({ where: { employeeId: id } });
+    await this.prisma.attendance.deleteMany({ where: { employeeId: id } });
+    await this.prisma.leaveApplication.deleteMany({ where: { employeeId: id } });
+    await this.prisma.leaveLedger.deleteMany({ where: { employeeId: id } });
+    await this.prisma.employeeGoal.deleteMany({ where: { employeeId: id } });
+    await this.prisma.appraisalReview.deleteMany({ where: { employeeId: id } });
+    await this.prisma.trainingRecord.deleteMany({ where: { employeeId: id } });
+    
+    // Check if exit process exists and delete it
+    await this.prisma.clearanceTask.deleteMany({ where: { exitProcess: { employeeId: id } } });
+    await this.prisma.fullAndFinalSettlement.deleteMany({ where: { exitProcess: { employeeId: id } } });
+    await this.prisma.exitProcess.deleteMany({ where: { employeeId: id } });
+
     return this.prisma.employee.delete({ where: { id } });
   }
 }

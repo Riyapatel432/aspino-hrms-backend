@@ -36,6 +36,32 @@ export class RecruitmentRepository {
     });
   }
 
+  // Training Types
+  async findManyTrainingTypes() {
+    return this.prisma.trainingType.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async createTrainingType(name: string) {
+    return this.prisma.trainingType.create({
+      data: { name },
+    });
+  }
+
+  async updateTrainingType(id: string, name: string) {
+    return this.prisma.trainingType.update({
+      where: { id },
+      data: { name },
+    });
+  }
+
+  async deleteTrainingType(id: string) {
+    return this.prisma.trainingType.delete({
+      where: { id },
+    });
+  }
+
   // Requisitions
   async findManyRequisitions(page: number, limit: number, search?: string, status?: string) {
     const skip = (page - 1) * limit;

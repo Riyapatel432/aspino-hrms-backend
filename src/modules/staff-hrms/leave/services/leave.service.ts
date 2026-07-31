@@ -43,9 +43,13 @@ export class LeaveService {
       throw new NotFoundException('Leave application not found');
     }
 
+    if (application.status === status) {
+      return application;
+    }
+
     const updatedApplication = await this.leaveRepository.updateLeaveStatus(id, status);
 
-    if (status === 'APPROVED') {
+    if (status === 'APPROVED' && application.status !== 'APPROVED') {
       const days = Math.ceil((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
       const balance = await this.leaveRepository.findLeaveBalance(application.employeeId, application.leaveType);
       if (balance) {
@@ -55,6 +59,20 @@ export class LeaveService {
           leaveType: application.leaveType,
           change: -days,
           reason: `Approved Leave Application Ref: ${application.id}`,
+        });
+      }
+    }
+
+    if (status !== 'APPROVED' && application.status === 'APPROVED') {
+      const days = Math.ceil((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
+      const balance = await this.leaveRepository.findLeaveBalance(application.employeeId, application.leaveType);
+      if (balance) {
+        await this.leaveRepository.updateLeaveBalance(balance.id, Math.max(0, balance.used - days));
+        await this.leaveRepository.createLeaveLedger({
+          employeeId: application.employeeId,
+          leaveType: application.leaveType,
+          change: days,
+          reason: `Reverted Leave Application Ref: ${application.id} (Status changed to ${status})`,
         });
       }
     }

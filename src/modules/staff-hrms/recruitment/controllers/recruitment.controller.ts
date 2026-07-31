@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, NotFoundException, Query, UseGuards } from '@nestjs/common';
 import { RecruitmentService } from '../services/recruitment.service';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
@@ -9,10 +9,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { generateOfferLetterPdf } from '../services/pdf-generator.helper';
+import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../auth/guards/roles.guard';
+import { Roles } from '../../../../auth/decorators/roles.decorator';
 
 @Controller('staff-hrms/recruitment')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('hr')
 export class RecruitmentController {
-  constructor(private readonly recruitmentService: RecruitmentService) {}
+  constructor(private readonly recruitmentService: RecruitmentService) { }
 
   @Post('candidates/upload-resume')
   @UseInterceptors(FileInterceptor('file', {
@@ -51,6 +56,27 @@ export class RecruitmentController {
   @Delete('departments/:id')
   async deleteDepartment(@Param('id') id: string) {
     return this.recruitmentService.deleteDepartment(id);
+  }
+
+  // Training Types
+  @Get('trainingTypes')
+  async getTrainingTypes() {
+    return this.recruitmentService.getTrainingTypes();
+  }
+
+  @Post('trainingTypes')
+  async createTrainingType(@Body('name') name: string) {
+    return this.recruitmentService.createTrainingType(name);
+  }
+
+  @Patch('trainingTypes/:id')
+  async updateTrainingType(@Param('id') id: string, @Body('name') name: string) {
+    return this.recruitmentService.updateTrainingType(id, name);
+  }
+
+  @Delete('trainingTypes/:id')
+  async deleteTrainingType(@Param('id') id: string) {
+    return this.recruitmentService.deleteTrainingType(id);
   }
 
   // 1. Requisitions

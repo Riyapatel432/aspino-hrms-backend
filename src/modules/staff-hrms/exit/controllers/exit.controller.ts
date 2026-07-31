@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards } from '@nestjs/common';
 import { ExitService } from '../services/exit.service';
 import { InitiateExitDto } from '../dto/initiate-exit.dto';
 import { ProcessSettlementDto } from '../dto/process-settlement.dto';
+import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../auth/guards/roles.guard';
+import { Roles } from '../../../../auth/decorators/roles.decorator';
 
 @Controller('staff-hrms/exit')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('hr')
 export class ExitController {
   constructor(private readonly exitService: ExitService) {}
 

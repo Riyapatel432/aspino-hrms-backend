@@ -1,10 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { AttendanceService } from '../services/attendance.service';
 import { CreateShiftDto } from '../dto/create-shift.dto';
 import { CreateRosterDto } from '../dto/create-roster.dto';
 import { CaptureAttendanceDto } from '../dto/capture-attendance.dto';
+import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../auth/guards/roles.guard';
+import { Roles } from '../../../../auth/decorators/roles.decorator';
 
 @Controller('staff-hrms/attendance')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('hr')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 

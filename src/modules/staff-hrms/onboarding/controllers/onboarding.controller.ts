@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Query, UseGuards } from '@nestjs/common';
 import { OnboardingService } from '../services/onboarding.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../auth/guards/roles.guard';
+import { Roles } from '../../../../auth/decorators/roles.decorator';
 
 import { IsBoolean } from 'class-validator';
 
@@ -21,6 +24,8 @@ export class UpdateSystemAccessDto {
 }
 
 @Controller('staff-hrms/onboarding')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('hr')
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) { }
 
