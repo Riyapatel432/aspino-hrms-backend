@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Delete, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { LeaveService } from '../services/leave.service';
 import { CreateHolidayDto } from '../dto/create-holiday.dto';
 import { ApplyLeaveDto } from '../dto/apply-leave.dto';
@@ -11,7 +20,7 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class LeaveController {
-  constructor(private readonly leaveService: LeaveService) { }
+  constructor(private readonly leaveService: LeaveService) {}
 
   @Get('holidays')
   async getHolidays() {
@@ -54,7 +63,10 @@ export class LeaveController {
   }
 
   @Patch('leaves/:id/status')
-  async updateLeaveStatus(@Param('id') id: string, @Body('status') status: string) {
+  async updateLeaveStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.leaveService.updateLeaveStatus(id, status);
   }
 

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsNumber, Min, Max, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  Max,
+  IsDateString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateLeaveMasterDto {
@@ -34,7 +41,10 @@ export class CreateLeaveMasterDto {
   @Max(365, { message: 'Other leave days cannot exceed 365.' })
   otherLeave: number;
 
-  @IsDateString({}, { message: 'Effective from must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    { message: 'Effective from must be a valid date (YYYY-MM-DD).' },
+  )
   @IsNotEmpty({ message: 'Effective from date is required.' })
   effectiveFrom: string;
 }

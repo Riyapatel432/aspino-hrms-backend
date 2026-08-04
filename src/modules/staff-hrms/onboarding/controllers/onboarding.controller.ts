@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { OnboardingService } from '../services/onboarding.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -38,45 +51,68 @@ export class OnboardingController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.onboardingService.getEmployees(pageNum, limitNum, search, status);
+    return this.onboardingService.getEmployees(
+      pageNum,
+      limitNum,
+      search,
+      status,
+    );
   }
 
   @Patch('documents/:id/status')
-  async updateDocumentStatus(@Param('id') id: string, @Body('status') status: string) {
+  async updateDocumentStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.onboardingService.updateDocumentStatus(id, status);
   }
 
   @Post('documents/:id/upload')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/documents',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        cb(null, `doc-${uniqueSuffix}${ext}`);
-      },
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/documents',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `doc-${uniqueSuffix}${ext}`);
+        },
+      }),
     }),
-  }))
+  )
   async uploadDocument(@Param('id') id: string, @UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
     const fileUrl = `/uploads/documents/${file.filename}`;
-    return this.onboardingService.updateDocumentFileUrl(id, fileUrl, 'SUBMITTED');
+    return this.onboardingService.updateDocumentFileUrl(
+      id,
+      fileUrl,
+      'SUBMITTED',
+    );
   }
 
   @Post('inductions')
-  async createInduction(@Body() body: { employeeId: string; scheduledAt: string; trainer: string }) {
+  async createInduction(
+    @Body() body: { employeeId: string; scheduledAt: string; trainer: string },
+  ) {
     return this.onboardingService.createInduction(body);
   }
 
   @Patch('inductions/:id/status')
-  async updateInductionStatus(@Param('id') id: string, @Body('status') status: string) {
+  async updateInductionStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.onboardingService.updateInductionStatus(id, status);
   }
 
   @Patch('employees/:id/probation')
-  async updateProbation(@Param('id') id: string, @Body('status') status: string) {
+  async updateProbation(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.onboardingService.updateProbation(id, status);
   }
 

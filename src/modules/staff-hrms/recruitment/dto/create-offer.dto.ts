@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsDateString,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOfferDto {
@@ -15,7 +21,10 @@ export class CreateOfferDto {
   @Min(1, { message: 'Annual CTC must be greater than 0.' })
   salary: number;
 
-  @IsDateString({}, { message: 'Joining date must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    { message: 'Joining date must be a valid date (YYYY-MM-DD).' },
+  )
   @IsNotEmpty({ message: 'Expected joining date is required.' })
   joiningDate: string;
 }

@@ -5,7 +5,12 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 export class OnboardingRepository {
   constructor(private readonly prisma: PrismaService) { }
 
-  async findManyEmployees(page: number, limit: number, search?: string, status?: string) {
+  async findManyEmployees(
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+  ) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -26,7 +31,12 @@ export class OnboardingRepository {
         where,
         skip,
         take: limit,
-        include: { documents: true, induction: true, leaveBalances: true, systemAccess: true },
+        include: {
+          documents: true,
+          induction: true,
+          leaveBalances: true,
+          systemAccess: true,
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.employee.count({ where }),
@@ -50,7 +60,11 @@ export class OnboardingRepository {
     });
   }
 
-  async createInduction(dto: { employeeId: string; scheduledAt: string; trainer: string }) {
+  async createInduction(dto: {
+    employeeId: string;
+    scheduledAt: string;
+    trainer: string;
+  }) {
     return this.prisma.inductionSchedule.create({
       data: {
         employeeId: dto.employeeId,
@@ -70,9 +84,9 @@ export class OnboardingRepository {
   async updateProbation(id: string, status: string) {
     const employee = await this.prisma.employee.update({
       where: { id },
-      data: { 
+      data: {
         probationStatus: status,
-        ...(status === 'CONFIRMED' ? { status: 'ACTIVE' } : {})
+        ...(status === 'CONFIRMED' ? { status: 'ACTIVE' } : {}),
       },
     });
 
@@ -90,7 +104,15 @@ export class OnboardingRepository {
     return employee;
   }
 
-  async upsertSystemAccess(employeeId: string, dto: { erpLogin: boolean; email: boolean; attendanceApp: boolean; vpn: boolean }) {
+  async upsertSystemAccess(
+    employeeId: string,
+    dto: {
+      erpLogin: boolean;
+      email: boolean;
+      attendanceApp: boolean;
+      vpn: boolean;
+    },
+  ) {
     return this.prisma.systemAccess.upsert({
       where: { employeeId },
       create: { employeeId, ...dto },
@@ -99,12 +121,20 @@ export class OnboardingRepository {
   }
 
   async updateDocumentFileUrl(id: string, fileUrl: string, status: string) {
-    const doc = await this.prisma.onboardingDocument.findUnique({ where: { id } });
+    const doc = await this.prisma.onboardingDocument.findUnique({
+      where: { id },
+    });
     let finalUrl = fileUrl;
-    if (doc && (doc.documentType.startsWith('Education') || doc.documentType.startsWith('Previous Employment'))) {
+    if (
+      doc &&
+      (doc.documentType.startsWith('Education') ||
+        doc.documentType.startsWith('Previous Employment'))
+    ) {
       if (doc.fileUrl) {
         try {
-          const list = doc.fileUrl.startsWith('[') ? JSON.parse(doc.fileUrl) : [doc.fileUrl];
+          const list = doc.fileUrl.startsWith('[')
+            ? JSON.parse(doc.fileUrl)
+            : [doc.fileUrl];
           list.push(fileUrl);
           finalUrl = JSON.stringify(list);
         } catch (e) {
@@ -129,21 +159,31 @@ export class OnboardingRepository {
 
   async deleteEmployee(id: string) {
     // Delete related records first to avoid foreign key constraint violations
-    await this.prisma.onboardingDocument.deleteMany({ where: { employeeId: id } });
-    await this.prisma.inductionSchedule.deleteMany({ where: { employeeId: id } });
+    await this.prisma.onboardingDocument.deleteMany({
+      where: { employeeId: id },
+    });
+    await this.prisma.inductionSchedule.deleteMany({
+      where: { employeeId: id },
+    });
     await this.prisma.systemAccess.deleteMany({ where: { employeeId: id } });
     await this.prisma.leaveBalance.deleteMany({ where: { employeeId: id } });
     await this.prisma.shiftRoster.deleteMany({ where: { employeeId: id } });
     await this.prisma.attendance.deleteMany({ where: { employeeId: id } });
-    await this.prisma.leaveApplication.deleteMany({ where: { employeeId: id } });
+    await this.prisma.leaveApplication.deleteMany({
+      where: { employeeId: id },
+    });
     await this.prisma.leaveLedger.deleteMany({ where: { employeeId: id } });
     await this.prisma.employeeGoal.deleteMany({ where: { employeeId: id } });
     await this.prisma.appraisalReview.deleteMany({ where: { employeeId: id } });
     await this.prisma.trainingRecord.deleteMany({ where: { employeeId: id } });
-    
+
     // Check if exit process exists and delete it
-    await this.prisma.clearanceTask.deleteMany({ where: { exitProcess: { employeeId: id } } });
-    await this.prisma.fullAndFinalSettlement.deleteMany({ where: { exitProcess: { employeeId: id } } });
+    await this.prisma.clearanceTask.deleteMany({
+      where: { exitProcess: { employeeId: id } },
+    });
+    await this.prisma.fullAndFinalSettlement.deleteMany({
+      where: { exitProcess: { employeeId: id } },
+    });
     await this.prisma.exitProcess.deleteMany({ where: { employeeId: id } });
 
     return this.prisma.employee.delete({ where: { id } });

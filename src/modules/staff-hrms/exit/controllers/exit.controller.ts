@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { ExitService } from '../services/exit.service';
 import { InitiateExitDto } from '../dto/initiate-exit.dto';
 import { ProcessSettlementDto } from '../dto/process-settlement.dto';
@@ -44,7 +53,14 @@ export class ExitController {
   @Patch('exits/:id')
   async updateExit(
     @Param('id') id: string,
-    @Body() body: { type?: string; resignationDate?: string; noticePeriodDays?: number; lastWorkingDay?: string; reason?: string },
+    @Body()
+    body: {
+      type?: string;
+      resignationDate?: string;
+      noticePeriodDays?: number;
+      lastWorkingDay?: string;
+      reason?: string;
+    },
   ) {
     return this.exitService.updateExit(id, body);
   }

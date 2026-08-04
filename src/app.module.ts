@@ -11,5 +11,4 @@ import { StaffHrmsModule } from './modules/staff-hrms/staff-hrms.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
-
+export class AppModule { }

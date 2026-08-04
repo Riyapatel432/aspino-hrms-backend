@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, Min, Max, IsIn, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  Max,
+  IsIn,
+  MinLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateFeedbackDto {

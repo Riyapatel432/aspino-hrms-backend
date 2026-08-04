@@ -1,15 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { ExitRepository } from '../repositories/exit.repository';
+import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
 export class ExitService {
-  constructor(private readonly exitRepository: ExitRepository) {}
+  constructor(
+    private readonly exitRepository: ExitRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async getExits() {
     return this.exitRepository.findManyExits();
   }
 
-  async initiateExit(dto: { employeeId: string; type: string; resignationDate: string; noticePeriodDays: number; lastWorkingDay: string; reason: string }) {
+  async initiateExit(dto: {
+    employeeId: string;
+    type: string;
+    resignationDate: string;
+    noticePeriodDays: number;
+    lastWorkingDay: string;
+    reason: string;
+  }) {
+    const existing = await this.prisma.exitProcess.findUnique({
+      where: { employeeId: dto.employeeId },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'An exit process has already been initiated for this employee.',
+      );
+    }
     return this.exitRepository.initiateExit(dto);
   }
 
@@ -17,7 +36,13 @@ export class ExitService {
     return this.exitRepository.updateClearance(id, status, clearedBy);
   }
 
-  async processSettlement(dto: { exitProcessId: string; pendingSalary: number; leaveEncashment: number; bonus: number; recoveries: number }) {
+  async processSettlement(dto: {
+    exitProcessId: string;
+    pendingSalary: number;
+    leaveEncashment: number;
+    bonus: number;
+    recoveries: number;
+  }) {
     return this.exitRepository.processSettlement(dto);
   }
 
@@ -25,7 +50,16 @@ export class ExitService {
     return this.exitRepository.completeExit(id);
   }
 
-  async updateExit(id: string, dto: { type?: string; resignationDate?: string; noticePeriodDays?: number; lastWorkingDay?: string; reason?: string }) {
+  async updateExit(
+    id: string,
+    dto: {
+      type?: string;
+      resignationDate?: string;
+      noticePeriodDays?: number;
+      lastWorkingDay?: string;
+      reason?: string;
+    },
+  ) {
     return this.exitRepository.updateExit(id, dto);
   }
 

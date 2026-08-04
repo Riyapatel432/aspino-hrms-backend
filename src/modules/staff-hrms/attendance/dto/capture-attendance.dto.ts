@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsNumber, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+  IsNumber,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CaptureAttendanceDto {

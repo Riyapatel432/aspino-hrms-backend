@@ -63,7 +63,12 @@ export class RecruitmentRepository {
   }
 
   // Requisitions
-  async findManyRequisitions(page: number, limit: number, search?: string, status?: string) {
+  async findManyRequisitions(
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+  ) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -128,7 +133,12 @@ export class RecruitmentRepository {
   }
 
   // Candidates
-  async findManyCandidates(page: number, limit: number, search?: string, status?: string) {
+  async findManyCandidates(
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+  ) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -183,9 +193,16 @@ export class RecruitmentRepository {
   }
 
   async updateCandidateStatus(id: string, status: string) {
+    const updateData: any = { status };
+    if (status === 'REJECTED') {
+      updateData.rejectedAt = new Date();
+      updateData.isReInterview = true;
+      updateData.coolOffDaysLeft = 30;
+      updateData.rejectionCount = { increment: 1 };
+    }
     return this.prisma.candidate.update({
       where: { id },
-      data: { status },
+      data: updateData,
     });
   }
 
@@ -198,7 +215,9 @@ export class RecruitmentRepository {
 
   async deleteCandidate(id: string) {
     // Delete related schedules and offers first
-    await this.prisma.interviewSchedule.deleteMany({ where: { candidateId: id } });
+    await this.prisma.interviewSchedule.deleteMany({
+      where: { candidateId: id },
+    });
     await this.prisma.offerLetter.deleteMany({ where: { candidateId: id } });
     return this.prisma.candidate.delete({
       where: { id },
@@ -220,12 +239,30 @@ export class RecruitmentRepository {
   }
 
   async createSchedule(dto: CreateScheduleDto) {
+    const existingCount = await this.prisma.interviewSchedule.count({
+      where: { candidateId: dto.candidateId },
+    });
+
+    let panelistsArray: string[] = [];
+    if (Array.isArray(dto.panelists)) {
+      panelistsArray = dto.panelists;
+    } else if (typeof dto.panelists === 'string') {
+      const trimmed = dto.panelists.trim();
+      if (trimmed.startsWith('[')) {
+        try { panelistsArray = JSON.parse(trimmed); } catch (e) { }
+      } else {
+        panelistsArray = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+
     return this.prisma.interviewSchedule.create({
       data: {
         candidateId: dto.candidateId,
         roundName: dto.roundName,
         scheduledAt: new Date(dto.scheduledAt),
-        panelists: dto.panelists,
+        panelists: panelistsArray,
+        attemptNumber: existingCount + 1,
+        isReschedule: existingCount > 0,
       },
     });
   }
@@ -241,6 +278,20 @@ export class RecruitmentRepository {
     if (data.scheduledAt) {
       data.scheduledAt = new Date(data.scheduledAt);
     }
+    if (data.panelists !== undefined) {
+      let panelistsArray: string[] = [];
+      if (Array.isArray(data.panelists)) {
+        panelistsArray = data.panelists;
+      } else if (typeof data.panelists === 'string') {
+        const trimmed = data.panelists.trim();
+        if (trimmed.startsWith('[')) {
+          try { panelistsArray = JSON.parse(trimmed); } catch (e) { }
+        } else {
+          panelistsArray = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      data.panelists = panelistsArray;
+    }
     return this.prisma.interviewSchedule.update({
       where: { id },
       data,
@@ -249,7 +300,9 @@ export class RecruitmentRepository {
 
   async deleteSchedule(id: string) {
     // Delete feedbacks first
-    await this.prisma.interviewFeedback.deleteMany({ where: { scheduleId: id } });
+    await this.prisma.interviewFeedback.deleteMany({
+      where: { scheduleId: id },
+    });
     return this.prisma.interviewSchedule.delete({
       where: { id },
     });

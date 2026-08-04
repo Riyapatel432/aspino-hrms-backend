@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, Min, IsIn, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsDateString,
+  Min,
+  IsIn,
+  MinLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class InitiateExitDto {
@@ -12,7 +20,13 @@ export class InitiateExitDto {
   })
   type: string;
 
-  @IsDateString({}, { message: 'Resignation/termination date must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    {
+      message:
+        'Resignation/termination date must be a valid date (YYYY-MM-DD).',
+    },
+  )
   @IsNotEmpty({ message: 'Resignation or termination date is required.' })
   resignationDate: string;
 
@@ -21,7 +35,10 @@ export class InitiateExitDto {
   @Min(0, { message: 'Notice period days cannot be negative.' })
   noticePeriodDays: number;
 
-  @IsDateString({}, { message: 'Last working day must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    { message: 'Last working day must be a valid date (YYYY-MM-DD).' },
+  )
   @IsNotEmpty({ message: 'Last working day is required.' })
   lastWorkingDay: string;
 

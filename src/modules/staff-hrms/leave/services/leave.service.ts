@@ -1,19 +1,63 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { LeaveRepository } from '../repositories/leave.repository';
+import { PrismaService } from '../../../../prisma/prisma.service';
+
+export interface UpdateHolidayDto {
+  name?: string;
+  date?: string;
+}
+
+export interface UpdateLeaveApplicationDto {
+  leaveType?: string;
+  startDate?: string;
+  endDate?: string;
+  reason?: string;
+  status?: string;
+}
 
 @Injectable()
 export class LeaveService {
-  constructor(private readonly leaveRepository: LeaveRepository) { }
+  constructor(
+    private readonly leaveRepository: LeaveRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async getHolidays() {
     return this.leaveRepository.findManyHolidays();
   }
 
   async createHoliday(dto: { name: string; date: string }) {
+    const targetDate = new Date(dto.date);
+    const existing = await this.prisma.holiday.findFirst({
+      where: { date: targetDate },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'A holiday is already scheduled on this date.',
+      );
+    }
     return this.leaveRepository.createHoliday(dto);
   }
 
-  async updateHoliday(id: string, dto: any) {
+  async updateHoliday(id: string, dto: UpdateHolidayDto) {
+    if (dto.date) {
+      const targetDate = new Date(dto.date);
+      const existing = await this.prisma.holiday.findFirst({
+        where: {
+          date: targetDate,
+          id: { not: id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException(
+          'A holiday is already scheduled on this date.',
+        );
+      }
+    }
     return this.leaveRepository.updateHoliday(id, dto);
   }
 
@@ -25,11 +69,17 @@ export class LeaveService {
     return this.leaveRepository.findManyLeaveApplications();
   }
 
-  async applyLeave(dto: { employeeId: string; leaveType: string; startDate: string; endDate: string; reason: string }) {
+  async applyLeave(dto: {
+    employeeId: string;
+    leaveType: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+  }) {
     return this.leaveRepository.createLeaveApplication(dto);
   }
 
-  async updateLeaveApplication(id: string, dto: any) {
+  async updateLeaveApplication(id: string, dto: UpdateLeaveApplicationDto) {
     return this.leaveRepository.updateLeaveApplication(id, dto);
   }
 
@@ -47,13 +97,26 @@ export class LeaveService {
       return application;
     }
 
-    const updatedApplication = await this.leaveRepository.updateLeaveStatus(id, status);
+    const updatedApplication = await this.leaveRepository.updateLeaveStatus(
+      id,
+      status,
+    );
 
     if (status === 'APPROVED' && application.status !== 'APPROVED') {
-      const days = Math.ceil((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-      const balance = await this.leaveRepository.findLeaveBalance(application.employeeId, application.leaveType);
+      const days =
+        Math.ceil(
+          (application.endDate.getTime() - application.startDate.getTime()) /
+            (1000 * 3600 * 24),
+        ) + 1;
+      const balance = await this.leaveRepository.findLeaveBalance(
+        application.employeeId,
+        application.leaveType,
+      );
       if (balance) {
-        await this.leaveRepository.updateLeaveBalance(balance.id, balance.used + days);
+        await this.leaveRepository.updateLeaveBalance(
+          balance.id,
+          balance.used + days,
+        );
         await this.leaveRepository.createLeaveLedger({
           employeeId: application.employeeId,
           leaveType: application.leaveType,
@@ -64,10 +127,20 @@ export class LeaveService {
     }
 
     if (status !== 'APPROVED' && application.status === 'APPROVED') {
-      const days = Math.ceil((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-      const balance = await this.leaveRepository.findLeaveBalance(application.employeeId, application.leaveType);
+      const days =
+        Math.ceil(
+          (application.endDate.getTime() - application.startDate.getTime()) /
+            (1000 * 3600 * 24),
+        ) + 1;
+      const balance = await this.leaveRepository.findLeaveBalance(
+        application.employeeId,
+        application.leaveType,
+      );
       if (balance) {
-        await this.leaveRepository.updateLeaveBalance(balance.id, Math.max(0, balance.used - days));
+        await this.leaveRepository.updateLeaveBalance(
+          balance.id,
+          Math.max(0, balance.used - days),
+        );
         await this.leaveRepository.createLeaveLedger({
           employeeId: application.employeeId,
           leaveType: application.leaveType,

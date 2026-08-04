@@ -7,17 +7,24 @@ export class ExitRepository {
 
   async findManyExits() {
     return this.prisma.exitProcess.findMany({
-      include: { 
+      include: {
         employee: {
-          include: { leaveBalances: true }
-        }, 
-        clearances: true, 
-        settlement: true 
+          include: { leaveBalances: true },
+        },
+        clearances: true,
+        settlement: true,
       },
     });
   }
 
-  async initiateExit(dto: { employeeId: string; type: string; resignationDate: string; noticePeriodDays: number; lastWorkingDay: string; reason: string }) {
+  async initiateExit(dto: {
+    employeeId: string;
+    type: string;
+    resignationDate: string;
+    noticePeriodDays: number;
+    lastWorkingDay: string;
+    reason: string;
+  }) {
     const exit = await this.prisma.exitProcess.create({
       data: {
         employeeId: dto.employeeId,
@@ -36,7 +43,15 @@ export class ExitRepository {
     });
 
     // Create departmental clearances for IT, Finance, Admin, HR, Store, Library, Security
-    const departments = ['IT', 'Finance', 'Admin', 'HR', 'Store', 'Library', 'Security'];
+    const departments = [
+      'IT',
+      'Finance',
+      'Admin',
+      'HR',
+      'Store',
+      'Library',
+      'Security',
+    ];
     await this.prisma.clearanceTask.createMany({
       data: departments.map((dept) => ({
         exitProcessId: exit.id,
@@ -60,8 +75,15 @@ export class ExitRepository {
     });
   }
 
-  async processSettlement(dto: { exitProcessId: string; pendingSalary: number; leaveEncashment: number; bonus: number; recoveries: number }) {
-    const netPayable = dto.pendingSalary + dto.leaveEncashment + dto.bonus - dto.recoveries;
+  async processSettlement(dto: {
+    exitProcessId: string;
+    pendingSalary: number;
+    leaveEncashment: number;
+    bonus: number;
+    recoveries: number;
+  }) {
+    const netPayable =
+      dto.pendingSalary + dto.leaveEncashment + dto.bonus - dto.recoveries;
 
     const settlement = await this.prisma.fullAndFinalSettlement.upsert({
       where: { exitProcessId: dto.exitProcessId },
@@ -104,11 +126,26 @@ export class ExitRepository {
     return exit;
   }
 
-  async updateExit(id: string, dto: { type?: string; resignationDate?: string; noticePeriodDays?: number; lastWorkingDay?: string; reason?: string }) {
-    const data: any = { ...dto };
-    if (dto.resignationDate) data.resignationDate = new Date(dto.resignationDate);
+  async updateExit(
+    id: string,
+    dto: {
+      employeeId?: string;
+      type?: string;
+      resignationDate?: string;
+      noticePeriodDays?: number;
+      lastWorkingDay?: string;
+      reason?: string;
+    },
+  ) {
+    const { employeeId, ...rest } = dto;
+    const data: any = { ...rest };
+    if (dto.resignationDate)
+      data.resignationDate = new Date(dto.resignationDate);
     if (dto.lastWorkingDay) data.lastWorkingDay = new Date(dto.lastWorkingDay);
-    
+    if (dto.noticePeriodDays !== undefined && dto.noticePeriodDays !== null) {
+      data.noticePeriodDays = Number(dto.noticePeriodDays);
+    }
+
     return this.prisma.exitProcess.update({
       where: { id },
       data,
@@ -117,17 +154,21 @@ export class ExitRepository {
 
   async deleteExit(id: string) {
     // Delete related clearances and settlements first
-    await this.prisma.clearanceTask.deleteMany({ where: { exitProcessId: id } });
-    await this.prisma.fullAndFinalSettlement.deleteMany({ where: { exitProcessId: id } });
-    
+    await this.prisma.clearanceTask.deleteMany({
+      where: { exitProcessId: id },
+    });
+    await this.prisma.fullAndFinalSettlement.deleteMany({
+      where: { exitProcessId: id },
+    });
+
     const exit = await this.prisma.exitProcess.delete({ where: { id } });
-    
+
     // Reset employee status
     await this.prisma.employee.update({
       where: { id: exit.employeeId },
       data: { status: 'ACTIVE' },
     });
-    
+
     return exit;
   }
 }

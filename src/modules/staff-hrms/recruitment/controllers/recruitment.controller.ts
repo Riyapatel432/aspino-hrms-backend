@@ -1,4 +1,19 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, NotFoundException, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Res,
+  NotFoundException,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RecruitmentService } from '../services/recruitment.service';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
@@ -8,6 +23,7 @@ import { CreateOfferDto } from '../dto/create-offer.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import * as fs from 'fs';
 import { generateOfferLetterPdf } from '../services/pdf-generator.helper';
 import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../../auth/guards/roles.guard';
@@ -20,16 +36,19 @@ export class RecruitmentController {
   constructor(private readonly recruitmentService: RecruitmentService) { }
 
   @Post('candidates/upload-resume')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/resumes',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        cb(null, `resume-${uniqueSuffix}${ext}`);
-      },
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/resumes',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `resume-${uniqueSuffix}${ext}`);
+        },
+      }),
     }),
-  }))
+  )
   async uploadResume(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -70,7 +89,10 @@ export class RecruitmentController {
   }
 
   @Patch('trainingTypes/:id')
-  async updateTrainingType(@Param('id') id: string, @Body('name') name: string) {
+  async updateTrainingType(
+    @Param('id') id: string,
+    @Body('name') name: string,
+  ) {
     return this.recruitmentService.updateTrainingType(id, name);
   }
 
@@ -89,7 +111,12 @@ export class RecruitmentController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.recruitmentService.getRequisitions(pageNum, limitNum, search, status);
+    return this.recruitmentService.getRequisitions(
+      pageNum,
+      limitNum,
+      search,
+      status,
+    );
   }
 
   @Post('requisitions')
@@ -98,7 +125,10 @@ export class RecruitmentController {
   }
 
   @Patch('requisitions/:id/status')
-  async updateRequisitionStatus(@Param('id') id: string, @Body('status') status: string) {
+  async updateRequisitionStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.recruitmentService.updateRequisitionStatus(id, status);
   }
 
@@ -122,7 +152,12 @@ export class RecruitmentController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.recruitmentService.getCandidates(pageNum, limitNum, search, status);
+    return this.recruitmentService.getCandidates(
+      pageNum,
+      limitNum,
+      search,
+      status,
+    );
   }
 
   @Post('candidates')
@@ -131,7 +166,10 @@ export class RecruitmentController {
   }
 
   @Patch('candidates/:id/status')
-  async updateCandidateStatus(@Param('id') id: string, @Body('status') status: string) {
+  async updateCandidateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.recruitmentService.updateCandidateStatus(id, status);
   }
 
@@ -199,9 +237,20 @@ export class RecruitmentController {
     if (!offer) {
       throw new NotFoundException('Offer letter not found');
     }
-    const filePath = join(process.cwd(), 'uploads', 'offers', `offer-${offer.id}.pdf`);
+    const dir = join(process.cwd(), 'uploads', 'offers');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const filePath = join(dir, `offer-${offer.id}.pdf`);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (e) {
+        // Ignore unlink error if locked
+      }
+    }
 
-    // Dynamically regenerate the PDF on every request to ensure it uses the redesigned layout
+    // Dynamically regenerate fresh PDF with updated single-page layout
     await generateOfferLetterPdf(filePath, {
       candidateName: offer.candidate.name,
       candidateEmail: offer.candidate.email,
@@ -211,7 +260,13 @@ export class RecruitmentController {
     });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="offer-${offer.id}.pdf"`);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="offer-${offer.id}.pdf"`,
+    );
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(filePath);
   }
 
@@ -220,3 +275,4 @@ export class RecruitmentController {
     return this.recruitmentService.acceptOffer(id);
   }
 }
+

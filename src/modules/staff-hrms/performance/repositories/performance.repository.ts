@@ -40,7 +40,13 @@ export class PerformanceRepository {
     });
   }
 
-  async createGoal(dto: { employeeId: string; cycleId: string; title: string; description: string; weightage: number }) {
+  async createGoal(dto: {
+    employeeId: string;
+    cycleId: string;
+    title: string;
+    description: string;
+    weightage: number;
+  }) {
     return this.prisma.employeeGoal.create({
       data: {
         employeeId: dto.employeeId,
@@ -69,16 +75,28 @@ export class PerformanceRepository {
     });
   }
 
-  async upsertReview(dto: { employeeId: string; cycleId: string; selfRating?: number; selfComments?: string; managerRating?: number; managerComments?: string; finalRating?: number; status: string }) {
+  async upsertReview(dto: {
+    employeeId: string;
+    cycleId: string;
+    selfRating?: number;
+    selfComments?: string;
+    managerRating?: number;
+    managerComments?: string;
+    finalRating?: number;
+    status: string;
+  }) {
     const existing = await this.prisma.appraisalReview.findFirst({
       where: { employeeId: dto.employeeId, cycleId: dto.cycleId },
     });
 
     const updateData: any = { status: dto.status };
     if (dto.selfRating !== undefined) updateData.selfRating = dto.selfRating;
-    if (dto.selfComments !== undefined) updateData.selfComments = dto.selfComments;
-    if (dto.managerRating !== undefined) updateData.managerRating = dto.managerRating;
-    if (dto.managerComments !== undefined) updateData.managerComments = dto.managerComments;
+    if (dto.selfComments !== undefined)
+      updateData.selfComments = dto.selfComments;
+    if (dto.managerRating !== undefined)
+      updateData.managerRating = dto.managerRating;
+    if (dto.managerComments !== undefined)
+      updateData.managerComments = dto.managerComments;
     if (dto.finalRating !== undefined) updateData.finalRating = dto.finalRating;
 
     if (existing) {

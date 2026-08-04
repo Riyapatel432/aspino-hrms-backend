@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, Max, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  Min,
+  Max,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateReviewDto {
@@ -40,6 +48,8 @@ export class CreateReviewDto {
   finalRating?: number;
 
   @IsString({ message: 'Status must be a string.' })
-  @IsIn(['PENDING', 'COMPLETED'], { message: 'Status must be either PENDING or COMPLETED.' })
+  @IsIn(['PENDING', 'COMPLETED'], {
+    message: 'Status must be either PENDING or COMPLETED.',
+  })
   status: string;
 }

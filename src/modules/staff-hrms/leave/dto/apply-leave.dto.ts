@@ -6,10 +6,15 @@ export class ApplyLeaveDto {
   employeeId: string;
 
   @IsString({ message: 'Leave type must be a string.' })
-  @IsNotEmpty({ message: 'Leave type is required (e.g. Casual, Sick, Earned).' })
+  @IsNotEmpty({
+    message: 'Leave type is required (e.g. Casual, Sick, Earned).',
+  })
   leaveType: string;
 
-  @IsDateString({}, { message: 'Start date must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    { message: 'Start date must be a valid date (YYYY-MM-DD).' },
+  )
   @IsNotEmpty({ message: 'Leave start date is required.' })
   startDate: string;
 

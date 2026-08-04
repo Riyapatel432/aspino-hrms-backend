@@ -73,29 +73,36 @@ model JobRequisition {
 }
 
 model Candidate {
-  id            String              @id @default(uuid())
-  name          String
-  email         String              @unique
-  phone         String?
-  resumeUrl     String?
-  source        String              // Referral, Portal, Agency, LinkedIn, Walk-in, Website
-  status        String              @default("SOURCED") // SOURCED, INTERVIEWING, SELECTED, REJECTED, OFFERED, ACCEPTED
-  requisitionId String
-  requisition   JobRequisition      @relation(fields: [requisitionId], references: [id])
-  createdAt     DateTime            @default(now())
-  schedules     InterviewSchedule[]
-  offer         OfferLetter?
+  id              String              @id @default(uuid())
+  name            String
+  email           String              @unique
+  phone           String?
+  resumeUrl       String?
+  source          String              // Referral, Portal, Agency, LinkedIn, Walk-in, Website
+  status          String              @default("SOURCED") // SOURCED, INTERVIEWING, SELECTED, REJECTED, RE_INTERVIEW_ELIGIBLE, OFFERED, ACCEPTED
+  isReInterview   Boolean             @default(false)
+  rejectionCount  Int                 @default(0)
+  rejectedAt      DateTime?
+  coolOffDaysLeft Int?                @default(0)
+  requisitionId   String
+  requisition     JobRequisition      @relation(fields: [requisitionId], references: [id])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+  schedules       InterviewSchedule[]
+  offer           OfferLetter?
 }
 
 model InterviewSchedule {
-  id          String              @id @default(uuid())
-  candidateId String
-  candidate   Candidate           @relation(fields: [candidateId], references: [id])
-  roundName   String              // e.g. Technical, HR, Manager
-  scheduledAt DateTime
-  panelists   String              // Comma separated panelist names
-  status      String              @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
-  feedbacks   InterviewFeedback[]
+  id            String              @id @default(uuid())
+  candidateId   String
+  candidate     Candidate           @relation(fields: [candidateId], references: [id])
+  roundName     String              // e.g. Technical, HR, Manager
+  scheduledAt   DateTime
+  panelists     String[]              // Array or comma-separated panelist IDs
+  status        String              @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  isReschedule  Boolean             @default(false)
+  attemptNumber Int                 @default(1)
+  feedbacks     InterviewFeedback[]
 }
 
 model InterviewFeedback {
@@ -416,4 +423,25 @@ model DepartmentLeaveMaster {
   updatedAt     DateTime @updatedAt
 
   @@unique([department, fiscalYear])
+}
+
+model ActivityLog {
+  id           String   @id @default(uuid())
+  userId       String?  // The user ID who performed the action, null if guest/system
+  userEmail    String?  // User email
+  userName     String?  // User name
+  userRole     String?  // User role
+  action       String   // e.g. "CREATE_EMPLOYEE", "LOGIN", "DELETE_DEPARTMENT"
+  entityType   String?  // e.g. "Employee", "LeaveApplication", "Department"
+  entityId     String?  // ID of the target resource
+  method       String   // GET, POST, PUT, PATCH, DELETE
+  url          String   // request url path
+  ip           String?  // IP address of the client
+  userAgent    String?  // User agent
+  statusCode   Int      // HTTP response status code
+  requestBody  Json?    // Serialized request body (sanitized)
+  queryParams  Json?    // Serialized query params
+  routeParams  Json?    // Serialized route parameters
+  responseBody Json?    // Serialized response body (sanitized, omitted if too large)
+  createdAt    DateTime @default(now())
 }

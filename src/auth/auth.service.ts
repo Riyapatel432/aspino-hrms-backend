@@ -18,17 +18,17 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   /**
    * Admin Login ONLY
    */
   async loginAdmin(loginDto: AdminLoginDto) {
     const { email, password } = loginDto;
-console.log("loginDto===>",loginDto);
+    console.log('loginDto===>', loginDto);
     const user = await this.userRepository.findByEmail(email);
 
-    console.log("user====?",user);
+    console.log('user====?', user);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }

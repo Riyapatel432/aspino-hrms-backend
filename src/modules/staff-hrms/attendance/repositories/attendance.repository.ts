@@ -36,7 +36,11 @@ export class AttendanceRepository {
     });
   }
 
-  async createRoster(dto: { employeeId: string; shiftId: string; date: string }) {
+  async createRoster(dto: {
+    employeeId: string;
+    shiftId: string;
+    date: string;
+  }) {
     return this.prisma.shiftRoster.create({
       data: {
         employeeId: dto.employeeId,

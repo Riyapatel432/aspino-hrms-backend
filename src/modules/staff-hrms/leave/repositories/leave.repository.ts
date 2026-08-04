@@ -3,7 +3,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
 export class LeaveRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyHolidays() {
     return this.prisma.holiday.findMany({ orderBy: { date: 'asc' } });
@@ -39,7 +39,13 @@ export class LeaveRepository {
     });
   }
 
-  async createLeaveApplication(dto: { employeeId: string; leaveType: string; startDate: string; endDate: string; reason: string }) {
+  async createLeaveApplication(dto: {
+    employeeId: string;
+    leaveType: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+  }) {
     return this.prisma.leaveApplication.create({
       data: {
         employeeId: dto.employeeId,
@@ -92,7 +98,12 @@ export class LeaveRepository {
     });
   }
 
-  async createLeaveLedger(dto: { employeeId: string; leaveType: string; change: number; reason: string }) {
+  async createLeaveLedger(dto: {
+    employeeId: string;
+    leaveType: string;
+    change: number;
+    reason: string;
+  }) {
     return this.prisma.leaveLedger.create({
       data: dto,
     });
@@ -114,9 +125,15 @@ export class LeaveRepository {
     otherLeave: number;
     effectiveFrom: string;
   }) {
-    const total = dto.casualLeave + dto.sickLeave + dto.earnedLeave + (dto.otherLeave || 0);
+    const total =
+      dto.casualLeave + dto.sickLeave + dto.earnedLeave + (dto.otherLeave || 0);
     return this.prisma.departmentLeaveMaster.upsert({
-      where: { department_fiscalYear: { department: dto.department, fiscalYear: dto.fiscalYear } },
+      where: {
+        department_fiscalYear: {
+          department: dto.department,
+          fiscalYear: dto.fiscalYear,
+        },
+      },
       create: {
         department: dto.department,
         fiscalYear: dto.fiscalYear,

@@ -1,6 +1,12 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+  ConflictException,
+} from '@nestjs/common';
 import { RecruitmentRepository } from '../repositories/recruitment.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
@@ -34,7 +40,7 @@ export class RecruitmentService {
   constructor(
     private readonly recruitmentRepository: RecruitmentRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   // ---------------------------------------------------------------------------
   // 0. Departments
@@ -45,12 +51,27 @@ export class RecruitmentService {
   }
 
   async createDepartment(name: string) {
+    const existing = await this.prisma.department.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictException('Department with this name already exists.');
+    }
     const dept = await this.recruitmentRepository.createDepartment(name);
     this.logger.log(`Department created: "${name}" (id=${dept.id})`);
     return dept;
   }
 
   async updateDepartment(id: string, name: string) {
+    const existing = await this.prisma.department.findFirst({
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+        id: { not: id },
+      },
+    });
+    if (existing) {
+      throw new ConflictException('Department with this name already exists.');
+    }
     const dept = await this.recruitmentRepository.updateDepartment(id, name);
     this.logger.log(`Department updated: id=${id}, newName="${name}"`);
     return dept;
@@ -70,12 +91,31 @@ export class RecruitmentService {
   }
 
   async createTrainingType(name: string) {
+    const existing = await this.prisma.trainingType.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'Training type with this name already exists.',
+      );
+    }
     const type = await this.recruitmentRepository.createTrainingType(name);
     this.logger.log(`TrainingType created: "${name}" (id=${type.id})`);
     return type;
   }
 
   async updateTrainingType(id: string, name: string) {
+    const existing = await this.prisma.trainingType.findFirst({
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+        id: { not: id },
+      },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'Training type with this name already exists.',
+      );
+    }
     const type = await this.recruitmentRepository.updateTrainingType(id, name);
     this.logger.log(`TrainingType updated: id=${id}, newName="${name}"`);
     return type;
@@ -90,8 +130,18 @@ export class RecruitmentService {
   // 1. Job Requisition
   // ---------------------------------------------------------------------------
 
-  async getRequisitions(page: number, limit: number, search?: string, status?: string) {
-    return this.recruitmentRepository.findManyRequisitions(page, limit, search, status);
+  async getRequisitions(
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+  ) {
+    return this.recruitmentRepository.findManyRequisitions(
+      page,
+      limit,
+      search,
+      status,
+    );
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
@@ -101,12 +151,15 @@ export class RecruitmentService {
   }
 
   async updateRequisitionStatus(id: string, status: string) {
-    const req = await this.recruitmentRepository.updateRequisitionStatus(id, status);
+    const req = await this.recruitmentRepository.updateRequisitionStatus(
+      id,
+      status,
+    );
     this.logger.log(`Requisition status updated: id=${id}, status=${status}`);
     return req;
   }
 
-  async updateRequisition(id: string, data: any) {
+  async updateRequisition(id: string, data: Prisma.JobRequisitionUpdateInput) {
     return this.recruitmentRepository.updateRequisition(id, data);
   }
 
@@ -119,23 +172,95 @@ export class RecruitmentService {
   // 2. Candidate Sourcing & Applications
   // ---------------------------------------------------------------------------
 
-  async getCandidates(page: number, limit: number, search?: string, status?: string) {
-    return this.recruitmentRepository.findManyCandidates(page, limit, search, status);
+  async getCandidates(
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+  ) {
+    const result = await this.recruitmentRepository.findManyCandidates(
+      page,
+      limit,
+      search,
+      status,
+    );
+
+    // Auto-update REJECTED candidates status in DB to RE_INTERVIEW_ELIGIBLE if 30-day cool-off period has passed
+    const now = new Date();
+    const coolOffDays = 30;
+
+    for (const cand of result.data) {
+      if (cand.status === 'REJECTED' || cand.rejectedAt || (cand.coolOffDaysLeft ?? 0) > 0) {
+        let lastDate = cand.rejectedAt ? new Date(cand.rejectedAt) : (cand.updatedAt ? new Date(cand.updatedAt) : new Date(cand.createdAt));
+        if (cand.schedules && cand.schedules.length > 0) {
+          const dates = cand.schedules.map((s: any) => new Date(s.scheduledAt).getTime());
+          const maxDate = new Date(Math.max(...dates));
+          if (maxDate > lastDate) lastDate = maxDate;
+        }
+
+        const daysPassed = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.max(0, coolOffDays - daysPassed);
+
+        if (cand.status === 'REJECTED') {
+          const newStatus = daysLeft <= 0 ? 'RE_INTERVIEW_ELIGIBLE' : 'REJECTED';
+          await this.prisma.candidate.update({
+            where: { id: cand.id },
+            data: { coolOffDaysLeft: daysLeft, status: newStatus },
+          });
+          cand.coolOffDaysLeft = daysLeft;
+          cand.status = newStatus;
+        } else {
+          await this.prisma.candidate.update({
+            where: { id: cand.id },
+            data: { coolOffDaysLeft: daysLeft },
+          });
+          cand.coolOffDaysLeft = daysLeft;
+        }
+      }
+    }
+
+    return result;
   }
 
   async createCandidate(dto: CreateCandidateDto) {
+    const existing = await this.prisma.candidate.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Candidate with this email already exists.');
+    }
     const candidate = await this.recruitmentRepository.createCandidate(dto);
     this.logger.log(`Candidate sourced: "${dto.name}" (id=${candidate.id})`);
     return candidate;
   }
 
   async updateCandidateStatus(id: string, status: string) {
-    const candidate = await this.recruitmentRepository.updateCandidateStatus(id, status);
+    const candidate = await this.recruitmentRepository.updateCandidateStatus(
+      id,
+      status,
+    );
     this.logger.log(`Candidate status updated: id=${id}, status=${status}`);
     return candidate;
   }
 
-  async updateCandidate(id: string, data: any) {
+  async updateCandidate(id: string, data: Prisma.CandidateUpdateInput) {
+    if (data.email) {
+      const emailStr =
+        typeof data.email === 'string' ? data.email : data.email.set;
+      if (emailStr) {
+        const existing = await this.prisma.candidate.findFirst({
+          where: {
+            email: emailStr,
+            id: { not: id },
+          },
+        });
+        if (existing) {
+          throw new ConflictException(
+            'Candidate with this email already exists.',
+          );
+        }
+      }
+    }
     return this.recruitmentRepository.updateCandidate(id, data);
   }
 
@@ -153,10 +278,18 @@ export class RecruitmentService {
   }
 
   async createSchedule(dto: CreateScheduleDto) {
-    return this.recruitmentRepository.createSchedule(dto);
+    const schedule = await this.recruitmentRepository.createSchedule(dto);
+    // Auto-update candidate status in DB to INTERVIEWING when interview is scheduled
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { id: dto.candidateId },
+    });
+    if (candidate && candidate.status !== 'SELECTED' && candidate.status !== 'ACCEPTED') {
+      await this.recruitmentRepository.updateCandidateStatus(dto.candidateId, 'INTERVIEWING');
+    }
+    return schedule;
   }
 
-  async updateSchedule(id: string, data: any) {
+  async updateSchedule(id: string, data: Prisma.InterviewScheduleUpdateInput) {
     return this.recruitmentRepository.updateSchedule(id, data);
   }
 
@@ -171,8 +304,13 @@ export class RecruitmentService {
   async createFeedback(dto: CreateFeedbackDto) {
     const feedback = await this.recruitmentRepository.createFeedback(dto);
     // Atomically mark the schedule as COMPLETED after feedback is captured
-    await this.recruitmentRepository.updateScheduleStatus(dto.scheduleId, 'COMPLETED');
-    this.logger.log(`Interview feedback recorded for schedule id=${dto.scheduleId} by ${dto.panelistName}`);
+    await this.recruitmentRepository.updateScheduleStatus(
+      dto.scheduleId,
+      'COMPLETED',
+    );
+    this.logger.log(
+      `Interview feedback recorded for schedule id=${dto.scheduleId} by ${dto.panelistName}`,
+    );
     return feedback;
   }
 
@@ -189,14 +327,31 @@ export class RecruitmentService {
   }
 
   async createOffer(dto: CreateOfferDto) {
+    const existing = await this.prisma.offerLetter.findUnique({
+      where: { candidateId: dto.candidateId },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'An offer letter has already been generated for this candidate.',
+      );
+    }
     const offer = await this.recruitmentRepository.createOffer(dto);
-    this.logger.log(`Offer letter generated for candidateId=${dto.candidateId} (offerId=${offer.id})`);
+    this.logger.log(
+      `Offer letter generated for candidateId=${dto.candidateId} (offerId=${offer.id})`,
+    );
 
     // PDF generation is a side-effect and must not block or rollback the main record
     try {
-      const fullOffer = await this.recruitmentRepository.findOfferById(offer.id);
+      const fullOffer = await this.recruitmentRepository.findOfferById(
+        offer.id,
+      );
       if (fullOffer?.candidate) {
-        const filePath = join(process.cwd(), 'uploads', 'offers', `offer-${offer.id}.pdf`);
+        const filePath = join(
+          process.cwd(),
+          'uploads',
+          'offers',
+          `offer-${offer.id}.pdf`,
+        );
         await generateOfferLetterPdf(filePath, {
           candidateName: fullOffer.candidate.name,
           candidateEmail: fullOffer.candidate.email,
@@ -206,17 +361,22 @@ export class RecruitmentService {
         });
         this.logger.log(`Offer letter PDF generated: ${filePath}`);
       } else {
-        this.logger.warn(`[createOffer] Candidate not found for offerId=${offer.id}; PDF skipped.`);
+        this.logger.warn(
+          `[createOffer] Candidate not found for offerId=${offer.id}; PDF skipped.`,
+        );
       }
     } catch (err) {
       // Log but do not rethrow — the offer record itself is already safely persisted
-      this.logger.error(`[createOffer] PDF generation failed for offerId=${offer.id}`, err);
+      this.logger.error(
+        `[createOffer] PDF generation failed for offerId=${offer.id}`,
+        err,
+      );
     }
 
     return offer;
   }
 
-  async updateOffer(id: string, data: any) {
+  async updateOffer(id: string, data: Prisma.OfferLetterUpdateInput) {
     return this.recruitmentRepository.updateOffer(id, data);
   }
 
@@ -246,6 +406,16 @@ export class RecruitmentService {
           data: { status: 'ACCEPTED' },
           include: { candidate: true },
         });
+
+        // Check if an employee with this email already exists
+        const existingEmp = await tx.employee.findUnique({
+          where: { email: offer.candidate.email },
+        });
+        if (existingEmp) {
+          throw new ConflictException(
+            'An employee with this email is already registered.',
+          );
+        }
 
         // 2. Update candidate pipeline status
         await tx.candidate.update({
@@ -306,8 +476,13 @@ export class RecruitmentService {
 
       return result;
     } catch (err) {
-      this.logger.error(`[acceptOffer] Transaction failed for offerId=${offerId}`, err);
-      throw new InternalServerErrorException('Failed to complete offer acceptance. Please retry.');
+      this.logger.error(
+        `[acceptOffer] Transaction failed for offerId=${offerId}`,
+        err,
+      );
+      throw new InternalServerErrorException(
+        'Failed to complete offer acceptance. Please retry.',
+      );
     }
   }
 }

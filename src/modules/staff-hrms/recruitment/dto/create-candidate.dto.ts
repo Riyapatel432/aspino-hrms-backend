@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  MinLength,
+  Matches,
+} from 'class-validator';
 
 export class CreateCandidateDto {
   @IsString({ message: 'Candidate name must be a string.' })
@@ -11,7 +18,8 @@ export class CreateCandidateDto {
   email: string;
 
   @IsString({ message: 'Phone must be a string.' })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Phone number is required.' })
+  @Matches(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits.' })
   phone?: string;
 
   @IsString({ message: 'Resume / CV file path must be a string.' })
@@ -19,7 +27,9 @@ export class CreateCandidateDto {
   resumeUrl: string;
 
   @IsString({ message: 'Sourcing channel must be a string.' })
-  @IsNotEmpty({ message: 'Sourcing source is required (e.g. Portal, Referral).' })
+  @IsNotEmpty({
+    message: 'Sourcing source is required (e.g. Portal, Referral).',
+  })
   source: string;
 
   @IsString({ message: 'Job Requisition ID must be a string.' })
