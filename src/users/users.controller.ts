@@ -6,14 +6,16 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
@@ -21,8 +23,8 @@ export class UsersController {
   }
 
   @Get()
-  findAll() {
-    return this.usersService.getAllUsers();
+  findAll(@Query() query: PaginationQueryDto & { role?: string }) {
+    return this.usersService.getAllUsers(query);
   }
 
   @Get(':id')

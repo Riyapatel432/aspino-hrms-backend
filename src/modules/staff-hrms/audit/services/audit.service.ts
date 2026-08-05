@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 @Injectable()
 export class AuditService {
@@ -23,20 +25,28 @@ export class AuditService {
   /**
    * Fetch activity logs with pagination and filters
    */
-  async getLogs(query: {
+  async getLogs(query: PaginationQueryDto & {
     userEmail?: string;
     action?: string;
     entityType?: string;
     startDate?: string;
     endDate?: string;
-    limit?: string;
-    page?: string;
-  }) {
-    const limit = Math.min(1000, parseInt(query.limit || '500', 10));
-    const page = Math.max(1, parseInt(query.page || '1', 10));
+  } = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ActivityLogWhereInput = {};
+
+    if (query.search) {
+      where.OR = [
+        { userEmail: { contains: query.search, mode: 'insensitive' } },
+        { action: { contains: query.search, mode: 'insensitive' } },
+        { entityType: { contains: query.search, mode: 'insensitive' } },
+        { method: { contains: query.search, mode: 'insensitive' } },
+        { ip: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
 
     if (query.userEmail) {
       where.userEmail = {
@@ -64,31 +74,29 @@ export class AuditService {
         where.createdAt.gte = new Date(query.startDate);
       }
       if (query.endDate) {
-        // Set end date to end of the day (23:59:59.999)
         const date = new Date(query.endDate);
         date.setHours(23, 59, 59, 999);
         where.createdAt.lte = date;
       }
     }
 
-    const [total, data] = await Promise.all([
-      this.prisma.activityLog.count({ where }),
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.createdAt = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
       this.prisma.activityLog.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         take: limit,
-        skip: skip,
+        skip,
       }),
+      this.prisma.activityLog.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return createPaginatedResponse(data, total, page, limit);
   }
 }

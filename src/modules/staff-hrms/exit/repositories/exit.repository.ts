@@ -1,20 +1,63 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class ExitRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findManyExits() {
-    return this.prisma.exitProcess.findMany({
-      include: {
-        employee: {
-          include: { leaveBalances: true },
+  async findManyExits(
+    query: PaginationQueryDto & { status?: string; type?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ExitProcessWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { reason: { contains: query.search, mode: 'insensitive' } },
+        { type: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.type && query.type !== 'ALL') {
+      where.type = query.type;
+    }
+
+    const allowedExitSortFields = ['resignationDate', 'lastWorkingDay', 'type', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedExitSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.resignationDate = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.exitProcess.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          employee: {
+            include: { leaveBalances: true },
+          },
+          clearances: true,
+          settlement: true,
         },
-        clearances: true,
-        settlement: true,
-      },
-    });
+        orderBy,
+      }),
+      this.prisma.exitProcess.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async initiateExit(dto: {

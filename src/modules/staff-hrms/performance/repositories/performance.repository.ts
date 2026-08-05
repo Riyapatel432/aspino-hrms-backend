@@ -1,14 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class PerformanceRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findManyCycles() {
-    return this.prisma.appraisalCycle.findMany({
-      include: { goals: true, appraisalReviews: true },
-    });
+  async findManyCycles(query: PaginationQueryDto & { status?: string } = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.AppraisalCycleWhereInput = {};
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const allowedCycleSortFields = ['name', 'startDate', 'endDate', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedCycleSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.startDate = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.appraisalCycle.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { goals: true, appraisalReviews: true },
+        orderBy,
+      }),
+      this.prisma.appraisalCycle.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createCycle(dto: { name: string; startDate: string; endDate: string }) {
@@ -34,10 +69,54 @@ export class PerformanceRepository {
     return this.prisma.appraisalCycle.delete({ where: { id } });
   }
 
-  async findManyGoals() {
-    return this.prisma.employeeGoal.findMany({
-      include: { employee: true, cycle: true },
-    });
+  async findManyGoals(
+    query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.EmployeeGoalWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { cycle: { name: { contains: query.search, mode: 'insensitive' } } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.cycleId) {
+      where.cycleId = query.cycleId;
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const allowedGoalSortFields = ['title', 'weightage', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedGoalSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.title = 'asc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.employeeGoal.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true, cycle: true },
+        orderBy,
+      }),
+      this.prisma.employeeGoal.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createGoal(dto: {
@@ -69,10 +148,54 @@ export class PerformanceRepository {
     return this.prisma.employeeGoal.delete({ where: { id } });
   }
 
-  async findManyReviews() {
-    return this.prisma.appraisalReview.findMany({
-      include: { employee: true, cycle: true },
-    });
+  async findManyReviews(
+    query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.AppraisalReviewWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { cycle: { name: { contains: query.search, mode: 'insensitive' } } },
+        { selfComments: { contains: query.search, mode: 'insensitive' } },
+        { managerComments: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.cycleId) {
+      where.cycleId = query.cycleId;
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const allowedReviewSortFields = ['selfRating', 'managerRating', 'finalRating', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedReviewSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.status = 'asc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.appraisalReview.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true, cycle: true },
+        orderBy,
+      }),
+      this.prisma.appraisalReview.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async upsertReview(dto: {

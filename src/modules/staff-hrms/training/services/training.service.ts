@@ -1,6 +1,8 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { TrainingRepository } from '../repositories/training.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 export interface UpdateTrainingDto {
   employeeId?: string;
@@ -15,10 +17,11 @@ export class TrainingService {
   constructor(
     private readonly trainingRepository: TrainingRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
-  async getTrainings() {
-    return this.trainingRepository.findManyTrainings();
+  async getTrainings(query: PaginationQueryDto & { employeeId?: string; trainingType?: string } = {}) {
+    const res = await this.trainingRepository.findManyTrainings(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createTraining(dto: {

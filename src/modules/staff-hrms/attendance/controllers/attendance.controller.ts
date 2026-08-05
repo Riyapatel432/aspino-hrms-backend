@@ -7,7 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { AttendanceService } from '../services/attendance.service';
 import { CreateShiftDto } from '../dto/create-shift.dto';
 import { CreateRosterDto } from '../dto/create-roster.dto';
@@ -20,11 +22,11 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) { }
 
   @Get('shifts')
-  async getShifts() {
-    return this.attendanceService.getShifts();
+  async getShifts(@Query() query: PaginationQueryDto) {
+    return this.attendanceService.getShifts(query);
   }
 
   @Post('shifts')
@@ -43,8 +45,8 @@ export class AttendanceController {
   }
 
   @Get('rosters')
-  async getRosters() {
-    return this.attendanceService.getRosters();
+  async getRosters(@Query() query: PaginationQueryDto & { employeeId?: string; shiftId?: string }) {
+    return this.attendanceService.getRosters(query);
   }
 
   @Post('rosters')
@@ -63,8 +65,8 @@ export class AttendanceController {
   }
 
   @Get('attendance')
-  async getAttendance() {
-    return this.attendanceService.getAttendance();
+  async getAttendance(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string }) {
+    return this.attendanceService.getAttendance(query);
   }
 
   @Post('attendance')

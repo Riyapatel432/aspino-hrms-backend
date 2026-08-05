@@ -20,6 +20,7 @@ import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -58,8 +59,8 @@ export class RecruitmentController {
 
   // 0. Departments
   @Get('departments')
-  async getDepartments() {
-    return this.recruitmentService.getDepartments();
+  async getDepartments(@Query() query: PaginationQueryDto) {
+    return this.recruitmentService.getDepartments(query);
   }
 
   @Post('departments')
@@ -79,8 +80,8 @@ export class RecruitmentController {
 
   // Training Types
   @Get('trainingTypes')
-  async getTrainingTypes() {
-    return this.recruitmentService.getTrainingTypes();
+  async getTrainingTypes(@Query() query: PaginationQueryDto) {
+    return this.recruitmentService.getTrainingTypes(query);
   }
 
   @Post('trainingTypes')
@@ -103,20 +104,8 @@ export class RecruitmentController {
 
   // 1. Requisitions
   @Get('requisitions')
-  async getRequisitions(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-  ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.recruitmentService.getRequisitions(
-      pageNum,
-      limitNum,
-      search,
-      status,
-    );
+  async getRequisitions(@Query() query: PaginationQueryDto & { status?: string; departmentId?: string }) {
+    return this.recruitmentService.getRequisitions(query);
   }
 
   @Post('requisitions')
@@ -144,20 +133,8 @@ export class RecruitmentController {
 
   // 2. Candidates
   @Get('candidates')
-  async getCandidates(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-  ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.recruitmentService.getCandidates(
-      pageNum,
-      limitNum,
-      search,
-      status,
-    );
+  async getCandidates(@Query() query: PaginationQueryDto & { status?: string; requisitionId?: string }) {
+    return this.recruitmentService.getCandidates(query);
   }
 
   @Post('candidates')
@@ -185,8 +162,8 @@ export class RecruitmentController {
 
   // 3. Scheduling
   @Get('schedules')
-  async getSchedules() {
-    return this.recruitmentService.getSchedules();
+  async getSchedules(@Query() query: PaginationQueryDto & { status?: string; candidateId?: string }) {
+    return this.recruitmentService.getSchedules(query);
   }
 
   @Post('schedules')
@@ -212,8 +189,8 @@ export class RecruitmentController {
 
   // 5. Offers
   @Get('offers')
-  async getOffers() {
-    return this.recruitmentService.getOffers();
+  async getOffers(@Query() query: PaginationQueryDto & { status?: string }) {
+    return this.recruitmentService.getOffers(query);
   }
 
   @Post('offers')

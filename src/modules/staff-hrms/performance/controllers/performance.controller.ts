@@ -7,7 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { PerformanceService } from '../services/performance.service';
 import { CreateAppraisalCycleDto } from '../dto/create-cycle.dto';
 import { CreateGoalDto } from '../dto/create-goal.dto';
@@ -20,11 +22,11 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class PerformanceController {
-  constructor(private readonly performanceService: PerformanceService) {}
+  constructor(private readonly performanceService: PerformanceService) { }
 
   @Get('appraisal-cycles')
-  async getAppraisalCycles() {
-    return this.performanceService.getAppraisalCycles();
+  async getAppraisalCycles(@Query() query: PaginationQueryDto & { status?: string }) {
+    return this.performanceService.getAppraisalCycles(query);
   }
 
   @Post('appraisal-cycles')
@@ -43,8 +45,8 @@ export class PerformanceController {
   }
 
   @Get('goals')
-  async getGoals() {
-    return this.performanceService.getGoals();
+  async getGoals(@Query() query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string }) {
+    return this.performanceService.getGoals(query);
   }
 
   @Post('goals')
@@ -63,8 +65,8 @@ export class PerformanceController {
   }
 
   @Get('reviews')
-  async getReviews() {
-    return this.performanceService.getReviews();
+  async getReviews(@Query() query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string }) {
+    return this.performanceService.getReviews(query);
   }
 
   @Post('reviews')

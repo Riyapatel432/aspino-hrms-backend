@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OnboardingService } from '../services/onboarding.service';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -43,20 +44,8 @@ export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) { }
 
   @Get('employees')
-  async getEmployees(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-  ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.onboardingService.getEmployees(
-      pageNum,
-      limitNum,
-      search,
-      status,
-    );
+  async getEmployees(@Query() query: PaginationQueryDto & { status?: string; department?: string }) {
+    return this.onboardingService.getEmployees(query);
   }
 
   @Patch('documents/:id/status')

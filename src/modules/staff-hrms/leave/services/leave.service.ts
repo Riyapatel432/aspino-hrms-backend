@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { LeaveRepository } from '../repositories/leave.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 export interface UpdateHolidayDto {
   name?: string;
@@ -24,10 +26,11 @@ export class LeaveService {
   constructor(
     private readonly leaveRepository: LeaveRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
-  async getHolidays() {
-    return this.leaveRepository.findManyHolidays();
+  async getHolidays(query: PaginationQueryDto = {}) {
+    const res = await this.leaveRepository.findManyHolidays(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createHoliday(dto: { name: string; date: string }) {
@@ -65,8 +68,9 @@ export class LeaveService {
     return this.leaveRepository.deleteHoliday(id);
   }
 
-  async getLeaveApplications() {
-    return this.leaveRepository.findManyLeaveApplications();
+  async getLeaveApplications(query: PaginationQueryDto & { employeeId?: string; status?: string } = {}) {
+    const res = await this.leaveRepository.findManyLeaveApplications(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async applyLeave(dto: {
@@ -106,7 +110,7 @@ export class LeaveService {
       const days =
         Math.ceil(
           (application.endDate.getTime() - application.startDate.getTime()) /
-            (1000 * 3600 * 24),
+          (1000 * 3600 * 24),
         ) + 1;
       const balance = await this.leaveRepository.findLeaveBalance(
         application.employeeId,
@@ -130,7 +134,7 @@ export class LeaveService {
       const days =
         Math.ceil(
           (application.endDate.getTime() - application.startDate.getTime()) /
-            (1000 * 3600 * 24),
+          (1000 * 3600 * 24),
         ) + 1;
       const balance = await this.leaveRepository.findLeaveBalance(
         application.employeeId,
@@ -154,8 +158,9 @@ export class LeaveService {
   }
 
   // --- Department Leave Master ---
-  async getLeaveMasters() {
-    return this.leaveRepository.findManyLeaveMasters();
+  async getLeaveMasters(query: PaginationQueryDto & { department?: string; fiscalYear?: string } = {}) {
+    const res = await this.leaveRepository.findManyLeaveMasters(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createLeaveMaster(dto: {

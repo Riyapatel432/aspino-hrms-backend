@@ -7,12 +7,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -38,8 +40,8 @@ export class AuthController {
   }
 
   @Get('all-users')
-  async getAllUsers() {
-    return this.authService.getAllUsers();
+  async getAllUsers(@Query() query: PaginationQueryDto & { role?: string }) {
+    return this.authService.getAllUsers(query);
   }
 
   @UseGuards(JwtAuthGuard)

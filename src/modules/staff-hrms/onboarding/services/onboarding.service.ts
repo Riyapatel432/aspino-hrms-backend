@@ -2,6 +2,8 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { OnboardingRepository } from '../repositories/onboarding.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 @Injectable()
 export class OnboardingService {
@@ -10,18 +12,9 @@ export class OnboardingService {
     private readonly prisma: PrismaService,
   ) { }
 
-  async getEmployees(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
-  ) {
-    return this.onboardingRepository.findManyEmployees(
-      page,
-      limit,
-      search,
-      status,
-    );
+  async getEmployees(query: PaginationQueryDto & { status?: string; department?: string } = {}) {
+    const res = await this.onboardingRepository.findManyEmployees(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async updateDocumentStatus(id: string, status: string) {

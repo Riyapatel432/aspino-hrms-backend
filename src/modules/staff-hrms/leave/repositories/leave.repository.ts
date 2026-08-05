@@ -1,12 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class LeaveRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findManyHolidays() {
-    return this.prisma.holiday.findMany({ orderBy: { date: 'asc' } });
+  async findManyHolidays(query: PaginationQueryDto = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.HolidayWhereInput = {};
+    if (query.search) {
+      where.name = { contains: query.search, mode: 'insensitive' };
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+    } else {
+      orderBy.date = 'asc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.holiday.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.holiday.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createHoliday(dto: { name: string; date: string }) {
@@ -32,11 +56,50 @@ export class LeaveRepository {
     });
   }
 
-  async findManyLeaveApplications() {
-    return this.prisma.leaveApplication.findMany({
-      include: { employee: true },
-      orderBy: { startDate: 'desc' },
-    });
+  async findManyLeaveApplications(
+    query: PaginationQueryDto & { employeeId?: string; status?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.LeaveApplicationWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { leaveType: { contains: query.search, mode: 'insensitive' } },
+        { reason: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const allowedSortFields = ['startDate', 'endDate', 'leaveType', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.startDate = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.leaveApplication.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true },
+        orderBy,
+      }),
+      this.prisma.leaveApplication.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createLeaveApplication(dto: {
@@ -54,6 +117,7 @@ export class LeaveRepository {
         endDate: new Date(dto.endDate),
         reason: dto.reason,
       },
+      include: { employee: true },
     });
   }
 
@@ -63,6 +127,7 @@ export class LeaveRepository {
     return this.prisma.leaveApplication.update({
       where: { id },
       data: dto,
+      include: { employee: true },
     });
   }
 
@@ -110,10 +175,45 @@ export class LeaveRepository {
   }
 
   // --- Department Leave Master ---
-  async findManyLeaveMasters() {
-    return this.prisma.departmentLeaveMaster.findMany({
-      orderBy: [{ fiscalYear: 'desc' }, { department: 'asc' }],
-    });
+  async findManyLeaveMasters(
+    query: PaginationQueryDto & { department?: string; fiscalYear?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.DepartmentLeaveMasterWhereInput = {};
+    if (query.search) {
+      where.OR = [
+        { department: { contains: query.search, mode: 'insensitive' } },
+        { fiscalYear: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.department && query.department !== 'ALL') {
+      where.department = query.department;
+    }
+    if (query.fiscalYear) {
+      where.fiscalYear = query.fiscalYear;
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+    } else {
+      orderBy.department = 'asc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.departmentLeaveMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+      }),
+      this.prisma.departmentLeaveMaster.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createLeaveMaster(dto: {

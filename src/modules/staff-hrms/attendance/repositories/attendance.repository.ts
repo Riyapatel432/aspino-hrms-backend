@@ -1,12 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class AttendanceRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findManyShifts() {
-    return this.prisma.shift.findMany();
+  async findManyShifts(query: PaginationQueryDto = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ShiftWhereInput = {};
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+    } else {
+      orderBy.name = 'asc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.shift.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.shift.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createShift(dto: { name: string; startTime: string; endTime: string }) {
@@ -30,10 +56,47 @@ export class AttendanceRepository {
     });
   }
 
-  async findManyRosters() {
-    return this.prisma.shiftRoster.findMany({
-      include: { employee: true, shift: true },
-    });
+  async findManyRosters(
+    query: PaginationQueryDto & { employeeId?: string; shiftId?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ShiftRosterWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { shift: { name: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.shiftId) {
+      where.shiftId = query.shiftId;
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.date = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.shiftRoster.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true, shift: true },
+        orderBy,
+      }),
+      this.prisma.shiftRoster.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createRoster(dto: {
@@ -64,11 +127,52 @@ export class AttendanceRepository {
     });
   }
 
-  async findManyAttendance() {
-    return this.prisma.attendance.findMany({
-      include: { employee: true },
-      orderBy: { date: 'desc' },
-    });
+  async findManyAttendance(
+    query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.AttendanceWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { shiftName: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+        { captureMethod: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.date) {
+      where.date = new Date(query.date);
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.date = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.attendance.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true },
+        orderBy,
+      }),
+      this.prisma.attendance.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async captureAttendance(dto: {

@@ -10,6 +10,8 @@ import { UserRepository } from '../users/repositories/user.repository';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../common/utils/pagination.util';
 
 @Injectable()
 export class AuthService {
@@ -105,7 +107,8 @@ export class AuthService {
     };
   }
 
-  async getAllUsers() {
-    return this.userRepository.findAll();
+  async getAllUsers(query: PaginationQueryDto & { role?: string } = {}) {
+    const res = await this.userRepository.findAll(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 }

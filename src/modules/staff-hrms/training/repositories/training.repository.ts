@@ -1,16 +1,57 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class TrainingRepository {
   constructor(private readonly prisma: PrismaService) { }
 
-  async findManyTrainings() {
-    return this.prisma.trainingRecord.findMany({
-      include: { employee: true },
-      orderBy: { completionDate: 'desc' },
-    });
+  async findManyTrainings(
+    query: PaginationQueryDto & { employeeId?: string; trainingType?: string } = {},
+  ) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TrainingRecordWhereInput = {};
+    if (query.search) {
+      const empConds = buildEmployeeSearchConditions(query.search);
+      where.OR = [
+        ...empConds.map((cond) => ({ employee: cond })),
+        { trainingName: { contains: query.search, mode: 'insensitive' } },
+        { trainingType: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    if (query.employeeId) {
+      where.employeeId = query.employeeId;
+    }
+    if (query.trainingType && query.trainingType !== 'ALL') {
+      where.trainingType = query.trainingType;
+    }
+
+    const allowedTrainSortFields = ['trainingName', 'trainingType', 'completionDate', 'expiryDate', 'status'];
+    const orderBy: any = {};
+    if (query.sortBy && allowedTrainSortFields.includes(query.sortBy)) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.completionDate = 'desc';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.trainingRecord.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { employee: true },
+        orderBy,
+      }),
+      this.prisma.trainingRecord.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async createTraining(dto: {

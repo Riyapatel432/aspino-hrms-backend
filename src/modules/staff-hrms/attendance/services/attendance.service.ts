@@ -1,6 +1,8 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { AttendanceRepository } from '../repositories/attendance.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 export interface UpdateShiftDto {
   name?: string;
@@ -31,10 +33,11 @@ export class AttendanceService {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
-  async getShifts() {
-    return this.attendanceRepository.findManyShifts();
+  async getShifts(query: PaginationQueryDto = {}) {
+    const res = await this.attendanceRepository.findManyShifts(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createShift(dto: { name: string; startTime: string; endTime: string }) {
@@ -66,8 +69,9 @@ export class AttendanceService {
     return this.attendanceRepository.deleteShift(id);
   }
 
-  async getRosters() {
-    return this.attendanceRepository.findManyRosters();
+  async getRosters(query: PaginationQueryDto & { employeeId?: string; shiftId?: string } = {}) {
+    const res = await this.attendanceRepository.findManyRosters(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createRoster(dto: {
@@ -122,8 +126,9 @@ export class AttendanceService {
     return this.attendanceRepository.deleteRoster(id);
   }
 
-  async getAttendance() {
-    return this.attendanceRepository.findManyAttendance();
+  async getAttendance(query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string } = {}) {
+    const res = await this.attendanceRepository.findManyAttendance(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async captureAttendance(dto: {

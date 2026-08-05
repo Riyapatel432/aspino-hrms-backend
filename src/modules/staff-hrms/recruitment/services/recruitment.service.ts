@@ -14,6 +14,8 @@ import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 import { generateOfferLetterPdf } from './pdf-generator.helper';
 import { join } from 'path';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 // ---------------------------------------------------------------------------
 // Onboarding configuration constants (21 CFR Part 11: configuration-driven,
@@ -46,8 +48,9 @@ export class RecruitmentService {
   // 0. Departments
   // ---------------------------------------------------------------------------
 
-  async getDepartments() {
-    return this.recruitmentRepository.findManyDepartments();
+  async getDepartments(query: PaginationQueryDto = {}) {
+    const res = await this.recruitmentRepository.findManyDepartments(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createDepartment(name: string) {
@@ -86,8 +89,9 @@ export class RecruitmentService {
   // Training Types
   // ---------------------------------------------------------------------------
 
-  async getTrainingTypes() {
-    return this.recruitmentRepository.findManyTrainingTypes();
+  async getTrainingTypes(query: PaginationQueryDto = {}) {
+    const res = await this.recruitmentRepository.findManyTrainingTypes(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createTrainingType(name: string) {
@@ -130,18 +134,9 @@ export class RecruitmentService {
   // 1. Job Requisition
   // ---------------------------------------------------------------------------
 
-  async getRequisitions(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
-  ) {
-    return this.recruitmentRepository.findManyRequisitions(
-      page,
-      limit,
-      search,
-      status,
-    );
+  async getRequisitions(query: PaginationQueryDto & { status?: string; departmentId?: string } = {}) {
+    const res = await this.recruitmentRepository.findManyRequisitions(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
@@ -172,28 +167,18 @@ export class RecruitmentService {
   // 2. Candidate Sourcing & Applications
   // ---------------------------------------------------------------------------
 
-  async getCandidates(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
-  ) {
-    const result = await this.recruitmentRepository.findManyCandidates(
-      page,
-      limit,
-      search,
-      status,
-    );
+  async getCandidates(query: PaginationQueryDto & { status?: string; requisitionId?: string } = {}) {
+    const res = await this.recruitmentRepository.findManyCandidates(query);
 
     // Auto-update REJECTED candidates status in DB to RE_INTERVIEW_ELIGIBLE if 30-day cool-off period has passed
     const now = new Date();
     const coolOffDays = 30;
 
-    for (const cand of result.data) {
+    for (const cand of res.data) {
       if (cand.status === 'REJECTED' || cand.rejectedAt || (cand.coolOffDaysLeft ?? 0) > 0) {
         let lastDate = cand.rejectedAt ? new Date(cand.rejectedAt) : (cand.updatedAt ? new Date(cand.updatedAt) : new Date(cand.createdAt));
-        if (cand.schedules && cand.schedules.length > 0) {
-          const dates = cand.schedules.map((s: any) => new Date(s.scheduledAt).getTime());
+        if ((cand as any).schedules && (cand as any).schedules.length > 0) {
+          const dates = (cand as any).schedules.map((s: any) => new Date(s.scheduledAt).getTime());
           const maxDate = new Date(Math.max(...dates));
           if (maxDate > lastDate) lastDate = maxDate;
         }
@@ -219,7 +204,7 @@ export class RecruitmentService {
       }
     }
 
-    return result;
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createCandidate(dto: CreateCandidateDto) {
@@ -273,8 +258,9 @@ export class RecruitmentService {
   // 3. Interview Scheduling
   // ---------------------------------------------------------------------------
 
-  async getSchedules() {
-    return this.recruitmentRepository.findManySchedules();
+  async getSchedules(query: PaginationQueryDto & { status?: string; candidateId?: string } = {}) {
+    const res = await this.recruitmentRepository.findManySchedules(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createSchedule(dto: CreateScheduleDto) {
@@ -318,8 +304,9 @@ export class RecruitmentService {
   // 5. Offer Letter
   // ---------------------------------------------------------------------------
 
-  async getOffers() {
-    return this.recruitmentRepository.findManyOffers();
+  async getOffers(query: PaginationQueryDto & { status?: string } = {}) {
+    const res = await this.recruitmentRepository.findManyOffers(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async getOfferById(id: string) {

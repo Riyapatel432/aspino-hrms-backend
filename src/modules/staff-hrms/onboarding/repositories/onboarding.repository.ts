@@ -1,56 +1,61 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+
+import { buildEmployeeSearchConditions } from '../../../../common/utils/search.util';
 
 @Injectable()
 export class OnboardingRepository {
   constructor(private readonly prisma: PrismaService) { }
 
   async findManyEmployees(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
+    query: PaginationQueryDto & { status?: string; department?: string } = {},
   ) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { employeeId: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-      ];
+    const where: Prisma.EmployeeWhereInput = {};
+    if (query.search) {
+      where.OR = buildEmployeeSearchConditions(query.search);
     }
-    if (status && status !== 'ALL') {
-      where.status = status;
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.department && query.department !== 'ALL') {
+      where.department = query.department;
     }
 
-    const [data, totalCount] = await this.prisma.$transaction([
-      this.prisma.employee.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          documents: true,
-          induction: true,
-          leaveBalances: true,
-          systemAccess: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.createdAt = 'desc';
+    }
+
+    const findOptions: Prisma.EmployeeFindManyArgs = {
+      where,
+      include: {
+        documents: true,
+        induction: true,
+        leaveBalances: true,
+        systemAccess: true,
+      },
+      orderBy,
+    };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.employee.findMany(findOptions),
       this.prisma.employee.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    };
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async updateDocumentStatus(id: string, status: string) {

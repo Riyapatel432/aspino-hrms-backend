@@ -3,7 +3,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsDateString,
-  IsIn,
 } from 'class-validator';
 
 export class CreateTrainingDto {
@@ -18,10 +17,7 @@ export class CreateTrainingDto {
   trainingName: string;
 
   @IsString({ message: 'Training type must be a string.' })
-  @IsIn(['COMPLIANCE', 'TECHNICAL', 'SOFT_SKILLS'], {
-    message:
-      'Training type must be one of: COMPLIANCE, TECHNICAL, or SOFT_SKILLS.',
-  })
+  @IsNotEmpty({ message: 'Training type is required.' })
   trainingType: string;
 
   @IsDateString(

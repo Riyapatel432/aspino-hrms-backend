@@ -1,6 +1,8 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { PerformanceRepository } from '../repositories/performance.repository';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../../common/utils/pagination.util';
 
 export interface UpdateCycleDto {
   name?: string;
@@ -30,10 +32,11 @@ export class PerformanceService {
   constructor(
     private readonly performanceRepository: PerformanceRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
-  async getAppraisalCycles() {
-    return this.performanceRepository.findManyCycles();
+  async getAppraisalCycles(query: PaginationQueryDto & { status?: string } = {}) {
+    const res = await this.performanceRepository.findManyCycles(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createAppraisalCycle(dto: {
@@ -73,8 +76,9 @@ export class PerformanceService {
     return this.performanceRepository.deleteCycle(id);
   }
 
-  async getGoals() {
-    return this.performanceRepository.findManyGoals();
+  async getGoals(query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {}) {
+    const res = await this.performanceRepository.findManyGoals(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createGoal(dto: {
@@ -95,8 +99,9 @@ export class PerformanceService {
     return this.performanceRepository.deleteGoal(id);
   }
 
-  async getReviews() {
-    return this.performanceRepository.findManyReviews();
+  async getReviews(query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {}) {
+    const res = await this.performanceRepository.findManyReviews(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createOrUpdateReview(dto: {

@@ -7,7 +7,9 @@ import {
   Patch,
   Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { LeaveService } from '../services/leave.service';
 import { CreateHolidayDto } from '../dto/create-holiday.dto';
 import { ApplyLeaveDto } from '../dto/apply-leave.dto';
@@ -20,11 +22,11 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class LeaveController {
-  constructor(private readonly leaveService: LeaveService) {}
+  constructor(private readonly leaveService: LeaveService) { }
 
   @Get('holidays')
-  async getHolidays() {
-    return this.leaveService.getHolidays();
+  async getHolidays(@Query() query: PaginationQueryDto) {
+    return this.leaveService.getHolidays(query);
   }
 
   @Post('holidays')
@@ -43,8 +45,8 @@ export class LeaveController {
   }
 
   @Get('leaves')
-  async getLeaveApplications() {
-    return this.leaveService.getLeaveApplications();
+  async getLeaveApplications(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string }) {
+    return this.leaveService.getLeaveApplications(query);
   }
 
   @Post('leaves/apply')
@@ -72,8 +74,8 @@ export class LeaveController {
 
   // --- Department Leave Master ---
   @Get('leave-master')
-  async getLeaveMasters() {
-    return this.leaveService.getLeaveMasters();
+  async getLeaveMasters(@Query() query: PaginationQueryDto & { department?: string; fiscalYear?: string }) {
+    return this.leaveService.getLeaveMasters(query);
   }
 
   @Post('leave-master')

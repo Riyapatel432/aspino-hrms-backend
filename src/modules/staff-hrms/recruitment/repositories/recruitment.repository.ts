@@ -1,20 +1,48 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 
 @Injectable()
 export class RecruitmentRepository {
   constructor(private readonly prisma: PrismaService) { }
 
   // Departments
-  async findManyDepartments() {
-    return this.prisma.department.findMany({
-      orderBy: { name: 'asc' },
-    });
+  async findManyDepartments(query: PaginationQueryDto = {}) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.DepartmentWhereInput = {};
+    if (query.search) {
+      where.name = { contains: query.search, mode: 'insensitive' };
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+    } else {
+      orderBy.name = 'asc';
+    }
+
+    const findOptions: Prisma.DepartmentFindManyArgs = { where, orderBy };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.department.findMany(findOptions),
+      this.prisma.department.count({ where }),
+    ]);
+
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async createDepartment(name: string) {
@@ -37,10 +65,36 @@ export class RecruitmentRepository {
   }
 
   // Training Types
-  async findManyTrainingTypes() {
-    return this.prisma.trainingType.findMany({
-      orderBy: { name: 'asc' },
-    });
+  async findManyTrainingTypes(query: PaginationQueryDto = {}) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TrainingTypeWhereInput = {};
+    if (query.search) {
+      where.name = { contains: query.search, mode: 'insensitive' };
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+    } else {
+      orderBy.name = 'asc';
+    }
+
+    const findOptions: Prisma.TrainingTypeFindManyArgs = { where, orderBy };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.trainingType.findMany(findOptions),
+      this.prisma.trainingType.count({ where }),
+    ]);
+
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async createTrainingType(name: string) {
@@ -64,44 +118,51 @@ export class RecruitmentRepository {
 
   // Requisitions
   async findManyRequisitions(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
+    query: PaginationQueryDto & { status?: string; departmentId?: string } = {},
   ) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (search) {
+    const where: Prisma.JobRequisitionWhereInput = {};
+    if (query.search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { raisedBy: { contains: search, mode: 'insensitive' } },
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { raisedBy: { contains: query.search, mode: 'insensitive' } },
+        { department: { name: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
-    if (status && status !== 'ALL') {
-      where.status = status;
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.departmentId) {
+      where.departmentId = query.departmentId;
     }
 
-    const [data, totalCount] = await this.prisma.$transaction([
-      this.prisma.jobRequisition.findMany({
-        where,
-        skip,
-        take: limit,
-        include: { candidates: true, department: true },
-        orderBy: { createdAt: 'desc' },
-      }),
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.createdAt = 'desc';
+    }
+
+    const findOptions: Prisma.JobRequisitionFindManyArgs = {
+      where,
+      include: { candidates: true, department: true },
+      orderBy,
+    };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.jobRequisition.findMany(findOptions),
       this.prisma.jobRequisition.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    };
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
@@ -134,49 +195,54 @@ export class RecruitmentRepository {
 
   // Candidates
   async findManyCandidates(
-    page: number,
-    limit: number,
-    search?: string,
-    status?: string,
+    query: PaginationQueryDto & { status?: string; requisitionId?: string } = {},
   ) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (search) {
+    const where: Prisma.CandidateWhereInput = {};
+    if (query.search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+        { phone: { contains: query.search, mode: 'insensitive' } },
+        { source: { contains: query.search, mode: 'insensitive' } },
+        { status: { contains: query.search, mode: 'insensitive' } },
+        { requisition: { title: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
-    if (status && status !== 'ALL') {
-      where.status = status;
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.requisitionId) {
+      where.requisitionId = query.requisitionId;
     }
 
-    const [data, totalCount] = await this.prisma.$transaction([
-      this.prisma.candidate.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          requisition: { include: { department: true } },
-          schedules: { include: { feedbacks: true } },
-          offer: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.createdAt = 'desc';
+    }
+
+    const findOptions: Prisma.CandidateFindManyArgs = {
+      where,
+      include: { requisition: true, schedules: true, offer: true },
+      orderBy,
+    };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.candidate.findMany(findOptions),
       this.prisma.candidate.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    };
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async createCandidate(dto: CreateCandidateDto) {
@@ -231,11 +297,51 @@ export class RecruitmentRepository {
   }
 
   // Schedules
-  async findManySchedules() {
-    return this.prisma.interviewSchedule.findMany({
+  async findManySchedules(
+    query: PaginationQueryDto & { status?: string; candidateId?: string } = {},
+  ) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.InterviewScheduleWhereInput = {};
+    if (query.search) {
+      where.OR = [
+        { roundName: { contains: query.search, mode: 'insensitive' } },
+        { candidate: { name: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query.candidateId) {
+      where.candidateId = query.candidateId;
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.scheduledAt = 'desc';
+    }
+
+    const findOptions: Prisma.InterviewScheduleFindManyArgs = {
+      where,
       include: { candidate: true, feedbacks: true },
-      orderBy: { scheduledAt: 'desc' },
-    });
+      orderBy,
+    };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.interviewSchedule.findMany(findOptions),
+      this.prisma.interviewSchedule.count({ where }),
+    ]);
+
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async createSchedule(dto: CreateScheduleDto) {
@@ -322,11 +428,46 @@ export class RecruitmentRepository {
   }
 
   // Offers
-  async findManyOffers() {
-    return this.prisma.offerLetter.findMany({
+  async findManyOffers(query: PaginationQueryDto & { status?: string } = {}) {
+    const isPaginated = query.page !== undefined || query.limit !== undefined;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OfferLetterWhereInput = {};
+    if (query.search) {
+      where.OR = [
+        { role: { contains: query.search, mode: 'insensitive' } },
+        { candidate: { name: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const orderBy: any = {};
+    if (query.sortBy) {
+      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+    } else {
+      orderBy.createdAt = 'desc';
+    }
+
+    const findOptions: Prisma.OfferLetterFindManyArgs = {
+      where,
       include: { candidate: true },
-      orderBy: { createdAt: 'desc' },
-    });
+      orderBy,
+    };
+    if (isPaginated) {
+      findOptions.skip = skip;
+      findOptions.take = limit;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.offerLetter.findMany(findOptions),
+      this.prisma.offerLetter.count({ where }),
+    ]);
+
+    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
   }
 
   async findOfferById(id: string) {

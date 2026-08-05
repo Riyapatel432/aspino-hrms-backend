@@ -7,7 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { TrainingService } from '../services/training.service';
 import { CreateTrainingDto } from '../dto/create-training.dto';
 import { JwtAuthGuard } from '../../../../auth/guards/jwt-auth.guard';
@@ -18,11 +20,11 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class TrainingController {
-  constructor(private readonly trainingService: TrainingService) {}
+  constructor(private readonly trainingService: TrainingService) { }
 
   @Get('trainings')
-  async getTrainings() {
-    return this.trainingService.getTrainings();
+  async getTrainings(@Query() query: PaginationQueryDto & { employeeId?: string; trainingType?: string }) {
+    return this.trainingService.getTrainings(query);
   }
 
   @Post('trainings')

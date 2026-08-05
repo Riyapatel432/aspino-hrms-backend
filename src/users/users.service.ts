@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from './repositories/user.repository';
 import { Prisma, User } from '@prisma/client';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../common/utils/pagination.util';
 
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) { }
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email);
@@ -24,8 +26,9 @@ export class UsersService {
     });
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return this.userRepository.findAll();
+  async getAllUsers(query: PaginationQueryDto & { role?: string } = {}) {
+    const res = await this.userRepository.findAll(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async updateUser(id: string, data: Prisma.UserUpdateInput): Promise<User> {

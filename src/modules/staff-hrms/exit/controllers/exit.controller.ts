@@ -7,7 +7,9 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { ExitService } from '../services/exit.service';
 import { InitiateExitDto } from '../dto/initiate-exit.dto';
 import { ProcessSettlementDto } from '../dto/process-settlement.dto';
@@ -19,11 +21,11 @@ import { Roles } from '../../../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class ExitController {
-  constructor(private readonly exitService: ExitService) {}
+  constructor(private readonly exitService: ExitService) { }
 
   @Get('exits')
-  async getExits() {
-    return this.exitService.getExits();
+  async getExits(@Query() query: PaginationQueryDto & { status?: string; type?: string }) {
+    return this.exitService.getExits(query);
   }
 
   @Post('exits/initiate')
