@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
@@ -8,10 +8,11 @@ export class UserRepository {
   constructor(private readonly prisma: PrismaService) { }
 
   async findByEmail(email: string): Promise<User | null> {
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
     console.log('--- DATABASE_URL in environment:', process.env.DATABASE_URL);
-    console.log('--- Querying email:', email.toLowerCase());
+    console.log('--- Querying email:', cleanEmail);
     const result = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: cleanEmail },
     });
     console.log('--- Query result:', result);
     return result;
@@ -27,7 +28,7 @@ export class UserRepository {
     return this.prisma.user.create({
       data: {
         ...data,
-        email: data.email.toLowerCase(),
+        email: data.email.toLowerCase().trim(),
       },
     });
   }
@@ -44,7 +45,7 @@ export class UserRepository {
     hashedPassword: string,
   ): Promise<User> {
     return this.prisma.user.update({
-      where: { email: email.toLowerCase() },
+      where: { email: email.toLowerCase().trim() },
       data: { password: hashedPassword },
     });
   }
@@ -87,6 +88,9 @@ export class UserRepository {
   }
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+    if (data.email && typeof data.email === 'string') {
+      data.email = data.email.toLowerCase().trim();
+    }
     return this.prisma.user.update({
       where: { id },
       data,

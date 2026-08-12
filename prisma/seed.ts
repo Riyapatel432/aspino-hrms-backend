@@ -40,6 +40,21 @@ async function main() {
     console.log(`ℹ️ Admin/HR user updated in User table (${adminEmail})`);
   }
 
+  // HR Manager Account
+  const hrEmail = 'hr@aspino.com';
+  const hrPassword = 'Hr@123';
+  const hrHashedPassword = await bcrypt.hash(hrPassword, 10);
+  await prisma.user.upsert({
+    where: { email: hrEmail },
+    update: { password: hrHashedPassword, role: 'hr' },
+    create: {
+      name: 'Aspino HR Manager',
+      email: hrEmail,
+      password: hrHashedPassword,
+      role: 'hr',
+    },
+  });
+
   // Seed Departments
   console.log('Seeding Departments...');
   const deptProduction = await prisma.department.upsert({

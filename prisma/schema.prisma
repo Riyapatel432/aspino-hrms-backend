@@ -31,6 +31,20 @@ model Employee {
   probationEnd     DateTime?
   probationStatus  String               @default("UNDER_REVIEW") // UNDER_REVIEW, CONFIRMED, EXTENDED
   status           String               @default("ACTIVE") // ONBOARDING, ACTIVE, EXITING, RELIEVED
+  
+  // QR Code & Public Profile Details
+  phone            String?
+  location         String?
+  qrToken          String               @unique @default(uuid())
+
+  // Bank & Statutory Details
+  bankId           Int?
+  bank             Bank?                @relation(fields: [bankId], references: [id])
+  bankName         String?
+  accountNumber    String?
+  ifscCode         String?
+  panNumber        String?
+
   createdAt        DateTime             @default(now())
   documents        OnboardingDocument[]
   induction        InductionSchedule?
@@ -44,11 +58,17 @@ model Employee {
   appraisalReviews AppraisalReview[]
   trainings        TrainingRecord[]
   exitProcess      ExitProcess?
+  salaryStructures  SalaryStructure[]
+  rentReceipts     HraRentReceipt[]
+  taxDeclarations  TaxDeclaration[]
+  loans            EmployeeLoan[]
+  payslips         Payslip[]
 }
 
 model Department {
   id           String           @id @default(uuid())
   name         String           @unique
+  isActive     Boolean          @default(true)
   createdAt    DateTime         @default(now())
   requisitions JobRequisition[]
 }
@@ -56,6 +76,7 @@ model Department {
 model TrainingType {
   id        String   @id @default(uuid())
   name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 
@@ -380,6 +401,7 @@ model Bank {
   name      String     @unique
   isActive  Boolean    @default(true)
   suppliers Supplier[]
+  employees Employee[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
@@ -419,6 +441,7 @@ model DepartmentLeaveMaster {
   otherLeave    Int      @default(0)
   totalLeave    Int
   effectiveFrom DateTime
+  isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -445,3 +468,143 @@ model ActivityLog {
   responseBody Json?    // Serialized response body (sanitized, omitted if too large)
   createdAt    DateTime @default(now())
 }
+
+model SalaryStructure {
+  id               String   @id @default(uuid())
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id])
+  month            Int      @default(1)
+  year             Int      @default(2026)
+  basicSalary      Float
+  hraAmount        Float    @default(0.0)
+  da               Float    @default(0.0)  // Dearness Allowance
+  conveyance       Float    @default(0.0)
+  specialAllowance Float    @default(0.0)
+  statutoryBonus   Float    @default(0.0)
+  reimbursements   Float    @default(0.0)
+  grossSalary      Float
+  pfAmount         Float    @default(0.0)
+  esiAmount        Float    @default(0.0)
+  ptAmount         Float    @default(0.0)
+  taxRegime        String   @default("NEW") // OLD, NEW
+  effectiveFrom    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
+}
+
+model HraRentReceipt {
+  id                  String    @id @default(uuid())
+  employeeId          String
+  employee            Employee  @relation(fields: [employeeId], references: [id])
+  financialYear       String    // e.g. 2026-2027
+  landlordName        String
+  landlordPan         String?
+  landlordAddress     String
+  monthlyRent         Float
+  annualRent          Float
+  rentReceiptUrl      String?
+  status              String    @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED
+  verifiedBy          String?
+  verifiedAt          DateTime?
+  calculatedExemption Float     @default(0.0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model TaxDeclaration {
+  id                 String   @id @default(uuid())
+  employeeId         String
+  employee           Employee @relation(fields: [employeeId], references: [id])
+  financialYear      String   // e.g. 2026-2027
+  regime             String   @default("NEW") // OLD, NEW
+  section80C         Float    @default(0.0)
+  section80D         Float    @default(0.0)
+  section80G         Float    @default(0.0)
+  otherDeductions    Float    @default(0.0)
+  hraExemptionAmount Float    @default(0.0)
+  status             String   @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model EmployeeLoan {
+  id                 String   @id @default(uuid())
+  employeeId         String
+  employee           Employee @relation(fields: [employeeId], references: [id])
+  loanType           String   @default("LOAN") // LOAN, SALARY_ADVANCE
+  principalAmount    Float
+  monthlyInstallment Float
+  balanceRemaining   Float
+  status             String   @default("ACTIVE") // ACTIVE, PAID_OFF, CANCELLED
+  disbursedAt        DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model PayrollRun {
+  id             String    @id @default(uuid())
+  month          Int
+  year           Int
+  status         String    @default("DRAFT") // DRAFT, PREVIEW, APPROVED, PROCESSED
+  totalEmployees Int       @default(0)
+  totalGross     Float     @default(0.0)
+  totalNet       Float     @default(0.0)
+  approvedBy     String?
+  approvedAt     DateTime?
+  payslips       Payslip[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([month, year])
+}
+
+model Payslip {
+  id               String      @id @default(uuid())
+  payrollRunId     String
+  payrollRun       PayrollRun  @relation(fields: [payrollRunId], references: [id])
+  employeeId       String
+  employee         Employee    @relation(fields: [employeeId], references: [id])
+  month            Int
+  year             Int
+  totalDays        Int         @default(30)
+  payableDays      Float       @default(30.0)
+  lwpDays          Float       @default(0.0)
+  otHours          Float       @default(0.0)
+  
+  // Earnings
+  basicSalary      Float       @default(0.0)
+  hra              Float       @default(0.0)
+  da               Float       @default(0.0)
+  conveyance       Float       @default(0.0)
+  specialAllowance Float       @default(0.0)
+  bonus            Float       @default(0.0)
+  reimbursements   Float       @default(0.0)
+  grossEarnings    Float       @default(0.0)
+  
+  // Deductions
+  pfDeduction      Float       @default(0.0)
+  esiDeduction     Float       @default(0.0)
+  ptDeduction      Float       @default(0.0)
+  tdsDeduction     Float       @default(0.0)
+  loanRecovery     Float       @default(0.0)
+  totalDeductions  Float       @default(0.0)
+  
+  netSalary        Float       @default(0.0)
+  bankName         String?
+  accountNumber    String?
+  ifscCode         String?
+  status           String      @default("GENERATED") // GENERATED, PAID
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model FiscalYear {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

@@ -11,7 +11,7 @@ export class UsersService {
   constructor(private readonly userRepository: UserRepository) { }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findByEmail(email);
+    return this.userRepository.findByEmail(email.toLowerCase().trim());
   }
 
   async findById(id: string): Promise<User | null> {
@@ -22,6 +22,7 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     return this.userRepository.create({
       ...data,
+      email: data.email.toLowerCase().trim(),
       password: hashedPassword,
     });
   }
@@ -32,6 +33,9 @@ export class UsersService {
   }
 
   async updateUser(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+    if (data.email && typeof data.email === 'string') {
+      data.email = data.email.toLowerCase().trim();
+    }
     if (data.password && typeof data.password === 'string') {
       data.password = await bcrypt.hash(data.password, 10);
     }
