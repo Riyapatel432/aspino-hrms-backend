@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, ExitType, ExitStatus, ClearanceStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
@@ -18,18 +18,21 @@ export class ExitRepository {
     const where: Prisma.ExitProcessWhereInput = {};
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
+      const searchUpper = query.search.toUpperCase().trim();
+      const isValidType = Object.values(ExitType).includes(searchUpper as any);
+      const isValidStatus = Object.values(ExitStatus).includes(searchUpper as any);
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { reason: { contains: query.search, mode: 'insensitive' } },
-        { type: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
+        ...(isValidType ? [{ type: searchUpper as ExitType }] : []),
+        ...(isValidStatus ? [{ status: searchUpper as ExitStatus }] : []),
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as ExitStatus;
     }
     if (query.type && query.type !== 'ALL') {
-      where.type = query.type;
+      where.type = query.type as ExitType;
     }
 
     const allowedExitSortFields = ['resignationDate', 'lastWorkingDay', 'type', 'status'];
@@ -71,7 +74,7 @@ export class ExitRepository {
     const exit = await this.prisma.exitProcess.create({
       data: {
         employeeId: dto.employeeId,
-        type: dto.type,
+        type: dto.type as ExitType,
         resignationDate: new Date(dto.resignationDate),
         noticePeriodDays: dto.noticePeriodDays,
         lastWorkingDay: new Date(dto.lastWorkingDay),
@@ -95,13 +98,25 @@ export class ExitRepository {
       'Library',
       'Security',
     ];
-    await this.prisma.clearanceTask.createMany({
-      data: departments.map((dept) => ({
+    const tasksData: any[] = [];
+    for (const name of departments) {
+      let dept = await this.prisma.department.findFirst({
+        where: { name: { equals: name, mode: 'insensitive' } },
+      });
+      if (!dept) {
+        dept = await this.prisma.department.create({
+          data: { name },
+        });
+      }
+      tasksData.push({
         exitProcessId: exit.id,
-        department: dept,
-        taskDescription: `Complete ${dept} assets and dues clearance checklist.`,
+        departmentId: dept.id,
+        taskDescription: `Complete ${name} assets and dues clearance checklist.`,
         status: 'PENDING',
-      })),
+      });
+    }
+    await this.prisma.clearanceTask.createMany({
+      data: tasksData,
     });
 
     return exit;
@@ -111,7 +126,7 @@ export class ExitRepository {
     return this.prisma.clearanceTask.update({
       where: { id },
       data: {
-        status,
+        status: status as ClearanceStatus,
         clearedAt: status === 'CLEARED' ? new Date() : null,
         clearedBy: status === 'CLEARED' ? clearedBy : null,
       },

@@ -177,6 +177,14 @@ async function main() {
     },
   });
 
+  // Seed Training Types
+  console.log('Seeding Training Types...');
+  const trainingTypeCompliance = await prisma.trainingType.upsert({
+    where: { name: 'COMPLIANCE' },
+    update: {},
+    create: { name: 'COMPLIANCE', isActive: true },
+  });
+
   // Seed Employees
   console.log('Seeding Employees...');
   const emp1 = await prisma.employee.upsert({
@@ -187,7 +195,7 @@ async function main() {
       firstName: 'Rajesh',
       lastName: 'Verma',
       email: 'rajesh.verma@aspino.com',
-      department: 'Production',
+      departmentId: deptProduction.id,
       designation: 'Senior Chemical Engineer',
       dateOfJoining: new Date('2025-01-15'),
       probationStatus: 'CONFIRMED',
@@ -224,7 +232,7 @@ async function main() {
     data: {
       employeeId: emp1.id,
       trainingName: 'GMP Regulatory Compliance & Pharma Safety Standards',
-      trainingType: 'COMPLIANCE',
+      trainingTypeId: trainingTypeCompliance.id,
       completionDate: new Date('2026-02-10'),
       expiryDate: new Date('2027-02-10'),
       status: 'COMPLETED',
@@ -251,7 +259,7 @@ async function main() {
       firstName: 'Sneha',
       lastName: 'Nair',
       email: 'sneha.nair@aspino.com',
-      department: 'Quality Assurance',
+      departmentId: deptQA.id,
       designation: 'QA Analyst',
       dateOfJoining: new Date('2026-07-01'),
       probationStatus: 'UNDER_REVIEW',
@@ -281,7 +289,7 @@ async function main() {
       firstName: 'Vikram',
       lastName: 'Singh',
       email: 'vikram.singh@aspino.com',
-      department: 'Production',
+      departmentId: deptProduction.id,
       designation: 'Chemical Operator',
       dateOfJoining: new Date('2024-03-10'),
       probationStatus: 'CONFIRMED',
@@ -304,16 +312,24 @@ async function main() {
   });
 
   // Clearance Tasks for Vikram
-  const depts = ['IT', 'Stores', 'Finance', 'Library'];
-  for (const dept of depts) {
+  const depts = ['IT', 'Store', 'Finance', 'Library'];
+  for (const name of depts) {
+    let dept = await prisma.department.findUnique({
+      where: { name },
+    });
+    if (!dept) {
+      dept = await prisma.department.create({
+        data: { name },
+      });
+    }
     await prisma.clearanceTask.create({
       data: {
         exitProcessId: exit.id,
-        department: dept,
-        taskDescription: `Complete ${dept} check and sign-off`,
-        status: dept === 'IT' ? 'CLEARED' : 'PENDING',
-        clearedAt: dept === 'IT' ? new Date() : null,
-        clearedBy: dept === 'IT' ? 'IT Helpdesk' : null,
+        departmentId: dept.id,
+        taskDescription: `Complete ${name} check and sign-off`,
+        status: name === 'IT' ? 'CLEARED' : 'PENDING',
+        clearedAt: name === 'IT' ? new Date() : null,
+        clearedBy: name === 'IT' ? 'IT Helpdesk' : null,
       },
     });
   }

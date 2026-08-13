@@ -174,8 +174,8 @@ export class LeaveService {
   }) {
     const existing = await this.prisma.departmentLeaveMaster.findFirst({
       where: {
-        department: { equals: dto.department, mode: 'insensitive' },
-        fiscalYear: { equals: dto.fiscalYear, mode: 'insensitive' },
+        departmentId: dto.department,
+        fiscalYearId: dto.fiscalYear,
       },
     });
     if (existing) {

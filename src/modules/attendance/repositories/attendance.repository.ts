@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, AttendanceStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
@@ -217,10 +217,12 @@ export class AttendanceRepository {
     const where: Prisma.AttendanceWhereInput = {};
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
+      const searchUpper = query.search.toUpperCase().trim();
+      const isValidStatus = Object.values(AttendanceStatus).includes(searchUpper as any);
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { shiftName: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
+        ...(isValidStatus ? [{ status: searchUpper as AttendanceStatus }] : []),
         { captureMethod: { contains: query.search, mode: 'insensitive' } },
       ];
     }
@@ -228,7 +230,7 @@ export class AttendanceRepository {
       where.employeeId = query.employeeId;
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as AttendanceStatus;
     }
     if (query.date) {
       where.date = new Date(query.date);
@@ -296,9 +298,9 @@ export class AttendanceRepository {
     const dataPayload = {
       checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
       checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
-      status: dto.status || 'PRESENT',
-      shiftId: dto.shiftId,
-      shiftName: dto.shiftName,
+      status: (dto.status || 'PRESENT') as AttendanceStatus,
+      shiftId: dto.shiftId || null,
+      shiftName: dto.shiftName || null,
       totalWorkHours: dto.totalWorkHours,
       otHours: dto.otHours,
       lateHours: dto.lateHours,
@@ -314,7 +316,7 @@ export class AttendanceRepository {
     if (existing) {
       return this.prisma.attendance.update({
         where: { id: existing.id },
-        data: dataPayload,
+        data: dataPayload as any,
       });
     } else {
       return this.prisma.attendance.create({
@@ -322,7 +324,7 @@ export class AttendanceRepository {
           employeeId: dto.employeeId,
           date: dateObj,
           ...dataPayload,
-        },
+        } as any,
       });
     }
   }
@@ -483,9 +485,9 @@ export class AttendanceRepository {
         } else if (rawStatus === 'ABSENT' || rawStatus === 'A') {
           status = 'ABSENT';
         } else if (rawStatus === 'CASUAL_LEAVE' || rawStatus === 'CL' || rawStatus === 'LEAVE') {
-          status = 'CASUAL_LEAVE';
+          status = 'ABSENT'; // Map leave to ABSENT in attendance status
         } else if (rawStatus === 'SICK_LEAVE' || rawStatus === 'SL') {
-          status = 'SICK_LEAVE';
+          status = 'ABSENT'; // Map leave to ABSENT in attendance status
         } else {
           status = 'PRESENT';
         }
@@ -493,7 +495,7 @@ export class AttendanceRepository {
         const dataPayload = {
           checkIn: checkInDate,
           checkOut: checkOutDate,
-          status,
+          status: status as AttendanceStatus,
           shiftName: rec.shiftName || 'General Shift',
           totalWorkHours: workHours,
           otHours: isNaN(Number(rec.otHours)) ? 0 : Number(rec.otHours),
@@ -528,7 +530,7 @@ export class AttendanceRepository {
             data: {
               date: noonDate,
               ...dataPayload,
-            },
+            } as any,
           });
         } else {
           await this.prisma.attendance.create({
@@ -536,7 +538,7 @@ export class AttendanceRepository {
               employeeId: empId,
               date: noonDate,
               ...dataPayload,
-            },
+            } as any,
           });
         }
         results.successCount++;

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, LeaveStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
@@ -66,18 +66,20 @@ export class LeaveRepository {
     const where: Prisma.LeaveApplicationWhereInput = {};
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
+      const searchUpper = query.search.toUpperCase().trim();
+      const isValidStatus = Object.values(LeaveStatus).includes(searchUpper as any);
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { leaveType: { contains: query.search, mode: 'insensitive' } },
         { reason: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
+        ...(isValidStatus ? [{ status: searchUpper as LeaveStatus }] : []),
       ];
     }
     if (query.employeeId) {
       where.employeeId = query.employeeId;
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as LeaveStatus;
     }
 
     const allowedSortFields = ['startDate', 'endDate', 'leaveType', 'status'];
@@ -146,7 +148,7 @@ export class LeaveRepository {
   async updateLeaveStatus(id: string, status: string) {
     return this.prisma.leaveApplication.update({
       where: { id },
-      data: { status },
+      data: { status: status as LeaveStatus },
     });
   }
 
@@ -185,22 +187,28 @@ export class LeaveRepository {
     const where: Prisma.DepartmentLeaveMasterWhereInput = {};
     if (query.search) {
       where.OR = [
-        { department: { contains: query.search, mode: 'insensitive' } },
-        { fiscalYear: { contains: query.search, mode: 'insensitive' } },
+        { department: { name: { contains: query.search, mode: 'insensitive' } } },
+        { fiscalYear: { name: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
     if (query.department && query.department !== 'ALL') {
-      where.department = query.department;
+      where.departmentId = query.department;
     }
     if (query.fiscalYear) {
-      where.fiscalYear = query.fiscalYear;
+      where.fiscalYearId = query.fiscalYear;
     }
 
     const orderBy: any = {};
     if (query.sortBy) {
-      orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+      if (query.sortBy === 'department') {
+        orderBy.department = { name: (query.sortOrder || 'asc').toLowerCase() };
+      } else if (query.sortBy === 'fiscalYear') {
+        orderBy.fiscalYear = { name: (query.sortOrder || 'asc').toLowerCase() };
+      } else {
+        orderBy[query.sortBy] = (query.sortOrder || 'asc').toLowerCase();
+      }
     } else {
-      orderBy.department = 'asc';
+      orderBy.departmentId = 'asc';
     }
 
     const [data, total] = await Promise.all([
@@ -208,6 +216,10 @@ export class LeaveRepository {
         where,
         skip,
         take: limit,
+        include: {
+          department: true,
+          fiscalYear: true,
+        },
         orderBy,
       }),
       this.prisma.departmentLeaveMaster.count({ where }),
@@ -229,14 +241,14 @@ export class LeaveRepository {
       dto.casualLeave + dto.sickLeave + dto.earnedLeave + (dto.otherLeave || 0);
     return this.prisma.departmentLeaveMaster.upsert({
       where: {
-        department_fiscalYear: {
-          department: dto.department,
-          fiscalYear: dto.fiscalYear,
+        departmentId_fiscalYearId: {
+          departmentId: dto.department,
+          fiscalYearId: dto.fiscalYear,
         },
       },
       create: {
-        department: dto.department,
-        fiscalYear: dto.fiscalYear,
+        departmentId: dto.department,
+        fiscalYearId: dto.fiscalYear,
         casualLeave: dto.casualLeave,
         sickLeave: dto.sickLeave,
         earnedLeave: dto.earnedLeave,
@@ -257,8 +269,8 @@ export class LeaveRepository {
 
   async updateLeaveMaster(id: string, data: any) {
     const updateData: any = {};
-    if (data.department !== undefined) updateData.department = data.department;
-    if (data.fiscalYear !== undefined) updateData.fiscalYear = data.fiscalYear;
+    if (data.department !== undefined) updateData.departmentId = data.department;
+    if (data.fiscalYear !== undefined) updateData.fiscalYearId = data.fiscalYear;
     if (data.casualLeave !== undefined) updateData.casualLeave = Number(data.casualLeave);
     if (data.sickLeave !== undefined) updateData.sickLeave = Number(data.sickLeave);
     if (data.earnedLeave !== undefined) updateData.earnedLeave = Number(data.earnedLeave);

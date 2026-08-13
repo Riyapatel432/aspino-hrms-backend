@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, RentReceiptStatus, PayrollStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma/prisma.service';
 
 @Injectable()
@@ -157,8 +158,20 @@ export class PayrollRepository {
 
   // HRA Rent Receipts
   async createRentReceipt(data: any) {
+    let fy = await this.prisma.fiscalYear.findFirst({
+      where: { name: { equals: data.financialYear, mode: 'insensitive' } },
+    });
+    if (!fy) {
+      fy = await this.prisma.fiscalYear.create({
+        data: { name: data.financialYear, isActive: true },
+      });
+    }
+    const { financialYear, ...rest } = data;
     return this.prisma.hraRentReceipt.create({
-      data,
+      data: {
+        ...rest,
+        financialYearId: fy.id,
+      },
       include: { employee: true },
     });
   }
@@ -250,7 +263,7 @@ export class PayrollRepository {
     return this.prisma.hraRentReceipt.update({
       where: { id },
       data: {
-        status,
+        status: status as RentReceiptStatus,
         verifiedBy,
         verifiedAt: new Date(),
         ...(calculatedExemption !== undefined ? { calculatedExemption } : {}),
@@ -262,26 +275,39 @@ export class PayrollRepository {
   async findRentReceiptById(id: string) {
     return this.prisma.hraRentReceipt.findUnique({
       where: { id },
-      include: { employee: true },
+      include: { employee: true, financialYear: true },
     });
   }
 
   // Tax Declarations
   async upsertTaxDeclaration(data: any) {
+    let fy = await this.prisma.fiscalYear.findFirst({
+      where: { name: { equals: data.financialYear, mode: 'insensitive' } },
+    });
+    if (!fy) {
+      fy = await this.prisma.fiscalYear.create({
+        data: { name: data.financialYear, isActive: true },
+      });
+    }
+    const { financialYear, ...rest } = data;
+    const dbData = {
+      ...rest,
+      financialYearId: fy.id,
+    };
     const existing = await this.prisma.taxDeclaration.findFirst({
-      where: { employeeId: data.employeeId, financialYear: data.financialYear },
+      where: { employeeId: dbData.employeeId, financialYearId: fy.id },
     });
 
     if (existing) {
       return this.prisma.taxDeclaration.update({
         where: { id: existing.id },
-        data,
+        data: dbData,
         include: { employee: true },
       });
     }
 
     return this.prisma.taxDeclaration.create({
-      data,
+      data: dbData,
       include: { employee: true },
     });
   }
@@ -294,7 +320,9 @@ export class PayrollRepository {
       andConditions.push({ employeeId });
     }
     if (financialYear) {
-      andConditions.push({ financialYear });
+      andConditions.push({
+        financialYear: { name: { equals: financialYear, mode: 'insensitive' } },
+      });
     }
 
     if (search && typeof search === 'string') {
@@ -351,7 +379,7 @@ export class PayrollRepository {
     const [data, total] = await Promise.all([
       this.prisma.taxDeclaration.findMany({
         where: whereClause,
-        include: { employee: true },
+        include: { employee: true, financialYear: true },
         orderBy: { createdAt: 'desc' },
         skip,
         take: Number(limit),
@@ -472,8 +500,8 @@ export class PayrollRepository {
   async createOrUpdatePayrollRun(month: number, year: number, status: string, totalEmployees: number, totalGross: number, totalNet: number) {
     return this.prisma.payrollRun.upsert({
       where: { month_year: { month, year } },
-      create: { month, year, status, totalEmployees, totalGross, totalNet },
-      update: { status, totalEmployees, totalGross, totalNet },
+      create: { month, year, status: status as PayrollStatus, totalEmployees, totalGross, totalNet },
+      update: { status: status as PayrollStatus, totalEmployees, totalGross, totalNet },
     });
   }
 
@@ -751,7 +779,7 @@ export class PayrollRepository {
   async getSalaryMatrixData(department?: string, search?: string) {
     let empWhere: any = {};
     if (department && department !== 'ALL') {
-      empWhere.department = department;
+      empWhere.departmentId = department;
     }
     if (search) {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
@@ -788,6 +816,7 @@ export class PayrollRepository {
       where: empWhere,
       include: {
         bank: true,
+        department: true,
         salaryStructures: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -802,7 +831,7 @@ export class PayrollRepository {
         employeeId: emp.id,
         employeeCode: emp.employeeId,
         fullName: `${emp.firstName} ${emp.lastName}`.trim(),
-        department: emp.department,
+        department: emp.department?.name || '',
         designation: emp.designation,
         basicSalary: s?.basicSalary || 0,
         hraAmount: s?.hraAmount || 0,

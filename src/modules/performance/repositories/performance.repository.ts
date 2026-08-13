@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, AppraisalCycleStatus, GoalStatus, AppraisalReviewStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
@@ -17,11 +17,10 @@ export class PerformanceRepository {
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as AppraisalCycleStatus;
     }
 
     const allowedCycleSortFields = ['name', 'startDate', 'endDate', 'status'];
@@ -84,7 +83,6 @@ export class PerformanceRepository {
         { title: { contains: query.search, mode: 'insensitive' } },
         { description: { contains: query.search, mode: 'insensitive' } },
         { cycle: { name: { contains: query.search, mode: 'insensitive' } } },
-        { status: { contains: query.search, mode: 'insensitive' } },
       ];
     }
     if (query.employeeId) {
@@ -94,7 +92,7 @@ export class PerformanceRepository {
       where.cycleId = query.cycleId;
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as GoalStatus;
     }
 
     const allowedGoalSortFields = ['title', 'weightage', 'status'];
@@ -163,7 +161,6 @@ export class PerformanceRepository {
         { cycle: { name: { contains: query.search, mode: 'insensitive' } } },
         { selfComments: { contains: query.search, mode: 'insensitive' } },
         { managerComments: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
       ];
     }
     if (query.employeeId) {
@@ -173,7 +170,7 @@ export class PerformanceRepository {
       where.cycleId = query.cycleId;
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as AppraisalReviewStatus;
     }
 
     const allowedReviewSortFields = ['selfRating', 'managerRating', 'finalRating', 'status'];

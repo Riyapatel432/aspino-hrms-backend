@@ -26,6 +26,7 @@ export class EmployeesController {
         documents: {
           where: { documentType: 'Photo', fileUrl: { not: null } },
         },
+        department: true,
       },
     });
     if (!employee)
@@ -61,7 +62,7 @@ export class EmployeesController {
       firstName: employee.firstName,
       lastName: employee.lastName,
       email: employee.email,
-      department: employee.department,
+      department: employee.department?.name || '',
       designation: employee.designation,
       dateOfJoining: employee.dateOfJoining,
       location: employee.location,
@@ -239,7 +240,7 @@ export class EmployeesController {
     };
 
     drawField('EMPLOYEE ID', employee.employeeId, 185);
-    drawField('DEPARTMENT', employee.department.toUpperCase(), 199);
+    drawField('DEPARTMENT', (employee.department?.name || '').toUpperCase(), 199);
     drawField('JOIN DATE', joinDate, 213);
     drawField('LOCATION', (employee.location || '—').toUpperCase(), 227);
     drawField('PHONE', employee.phone || '—', 241);

@@ -1,0 +1,166 @@
+enum GatePassType {
+  INWARD
+  OUTWARD
+}
+
+enum GatePassStatus {
+  GATE_IN
+  COMPLETED
+  CANCELLED
+}
+
+enum ProbationStatus {
+  UNDER_REVIEW
+  CONFIRMED
+  EXTENDED
+}
+
+enum EmployeeStatus {
+  ONBOARDING
+  ACTIVE
+  EXITING
+  RELIEVED
+}
+
+enum JobRequisitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+enum CandidateStatus {
+  SOURCED
+  INTERVIEWING
+  SELECTED
+  REJECTED
+  RE_INTERVIEW_ELIGIBLE
+  OFFERED
+  ACCEPTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum Recommendation {
+  SELECT
+  REJECT
+  HOLD
+}
+
+enum OfferStatus {
+  GENERATED
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum DocumentStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum InductionStatus {
+  SCHEDULED
+  COMPLETED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALFDAY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AppraisalCycleStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum GoalStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+}
+
+enum AppraisalReviewStatus {
+  DRAFT
+  SELF_REVIEW
+  MANAGER_REVIEW
+  COMPLETED
+}
+
+enum TrainingStatus {
+  COMPLETED
+  EXPIRED
+  PENDING
+}
+
+enum ExitType {
+  RESIGNATION
+  TERMINATION
+}
+
+enum ExitStatus {
+  INITIATED
+  CLEARANCE_IN_PROGRESS
+  SETTLED
+  COMPLETED
+}
+
+enum ClearanceStatus {
+  PENDING
+  CLEARED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum TaxRegime {
+  OLD
+  NEW
+}
+
+enum RentReceiptStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum TaxDeclarationStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum LoanStatus {
+  ACTIVE
+  PAID_OFF
+  CANCELLED
+}
+
+enum PayrollStatus {
+  DRAFT
+  PREVIEW
+  APPROVED
+  PROCESSED
+}
+
+enum PayslipStatus {
+  GENERATED
+  PAID
+}

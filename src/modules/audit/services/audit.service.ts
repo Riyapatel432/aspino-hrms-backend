@@ -14,7 +14,7 @@ export class AuditService {
    * Create an activity log record.
    * Runs in a try-catch to ensure logging failures never crash primary API operations.
    */
-  async createLog(data: Prisma.ActivityLogCreateInput) {
+  async createLog(data: Prisma.ActivityLogUncheckedCreateInput) {
     try {
       return await this.prisma.activityLog.create({ data });
     } catch (error) {

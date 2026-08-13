@@ -6,10 +6,14 @@ import {
   Max,
   IsIn,
   MinLength,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateFeedbackDto {
+  @IsString({ message: 'Panelist ID must be a string.' })
+  @IsOptional()
+  panelistId?: string;
   @IsString({ message: 'Schedule ID must be a string.' })
   @IsNotEmpty({ message: 'An interview schedule must be selected.' })
   scheduleId: string;

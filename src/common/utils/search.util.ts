@@ -11,7 +11,7 @@ export function buildEmployeeSearchConditions(search: string): Prisma.EmployeeWh
     { lastName: { contains: term, mode: 'insensitive' } },
     { employeeId: { contains: term, mode: 'insensitive' } },
     { email: { contains: term, mode: 'insensitive' } },
-    { department: { contains: term, mode: 'insensitive' } },
+    { department: { name: { contains: term, mode: 'insensitive' } } },
     { designation: { contains: term, mode: 'insensitive' } },
   ];
 

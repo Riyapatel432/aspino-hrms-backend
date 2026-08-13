@@ -63,13 +63,21 @@ export class PayrollService {
     if (!empExists) {
       const code = dto.employeeId;
       const cleanCode = code.replace(/[^a-zA-Z0-9-]/g, '');
+      let dept = await this.prisma.department.findUnique({
+        where: { name: 'Engineering' },
+      });
+      if (!dept) {
+        dept = await this.prisma.department.create({
+          data: { name: 'Engineering' },
+        });
+      }
       empExists = await this.prisma.employee.create({
         data: {
           employeeId: code.startsWith('ASP-') ? code : `ASP-${cleanCode.toUpperCase()}`,
           firstName: 'Employee',
           lastName: code,
           email: `${cleanCode.toLowerCase()}@aspino.com`,
-          department: 'Engineering',
+          departmentId: dept.id,
           designation: 'Staff Employee',
           dateOfJoining: new Date(),
         },
@@ -155,11 +163,19 @@ export class PayrollService {
         });
       }
 
+      let fy = await this.prisma.fiscalYear.findFirst({
+        where: { name: { equals: dto.financialYear, mode: 'insensitive' } },
+      });
+      if (!fy) {
+        fy = await this.prisma.fiscalYear.create({
+          data: { name: dto.financialYear, isActive: true },
+        });
+      }
       return this.prisma.hraRentReceipt.update({
         where: { id: dto.id },
         data: {
           employeeId: dto.employeeId,
-          financialYear: dto.financialYear,
+          financialYearId: fy.id,
           landlordName: dto.landlordName,
           landlordPan: dto.landlordPan,
           landlordAddress: dto.landlordAddress,
@@ -210,7 +226,7 @@ export class PayrollService {
       // Auto update Tax Declaration with computed HRA exemption
       await this.repo.upsertTaxDeclaration({
         employeeId: receipt.employeeId,
-        financialYear: receipt.financialYear,
+        financialYear: receipt.financialYear.name,
         hraExemptionAmount: calculatedExemption,
         status: 'APPROVED',
       });
@@ -286,7 +302,8 @@ export class PayrollService {
         employeeId: true,
         firstName: true,
         lastName: true,
-        department: true,
+        departmentId: true,
+        department: { select: { name: true } },
         designation: true,
       },
       orderBy: { firstName: 'asc' },
@@ -329,7 +346,14 @@ export class PayrollService {
       ];
     }
 
-    return employees;
+    return employees.map(emp => ({
+      id: emp.id,
+      employeeId: emp.employeeId,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      department: emp.department?.name || '',
+      designation: emp.designation,
+    }));
   }
 
   async runMonthlyPayroll(month: number, year: number) {

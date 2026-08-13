@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, JobRequisitionStatus, CandidateStatus, InterviewStatus, Recommendation, OfferStatus } from '@prisma/client';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
@@ -50,12 +50,7 @@ export class RecruitmentRepository {
         const [reqCount, lmCount] = await Promise.all([
           this.prisma.jobRequisition.count({ where: { departmentId: dept.id } }),
           this.prisma.departmentLeaveMaster.count({
-            where: {
-              OR: [
-                { department: dept.id },
-                { department: { equals: dept.name, mode: 'insensitive' } },
-              ],
-            },
+            where: { departmentId: dept.id },
           }),
         ]);
         return {
@@ -126,7 +121,7 @@ export class RecruitmentRepository {
     const dataWithCounts = await Promise.all(
       data.map(async (type) => {
         const trainCount = await this.prisma.trainingRecord.count({
-          where: { trainingType: { equals: type.name, mode: 'insensitive' } },
+          where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
         });
         return {
           ...type,
@@ -178,7 +173,7 @@ export class RecruitmentRepository {
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as JobRequisitionStatus;
     }
     if (query.departmentId) {
       where.departmentId = query.departmentId;
@@ -219,7 +214,7 @@ export class RecruitmentRepository {
   async updateRequisitionStatus(id: string, status: string) {
     return this.prisma.jobRequisition.update({
       where: { id },
-      data: { status },
+      data: { status: status as JobRequisitionStatus },
       include: { department: true, candidates: true },
     });
   }
@@ -256,12 +251,11 @@ export class RecruitmentRepository {
         { email: { contains: query.search, mode: 'insensitive' } },
         { phone: { contains: query.search, mode: 'insensitive' } },
         { source: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
         { requisition: { title: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as CandidateStatus;
     }
     if (query.requisitionId) {
       where.requisitionId = query.requisitionId;
@@ -364,7 +358,7 @@ export class RecruitmentRepository {
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as InterviewStatus;
     }
     if (query.candidateId) {
       where.candidateId = query.candidateId;
@@ -427,7 +421,7 @@ export class RecruitmentRepository {
   async updateScheduleStatus(id: string, status: string) {
     return this.prisma.interviewSchedule.update({
       where: { id },
-      data: { status },
+      data: { status: status as InterviewStatus },
     });
   }
 
@@ -471,9 +465,10 @@ export class RecruitmentRepository {
       data: {
         scheduleId: dto.scheduleId,
         panelistName: dto.panelistName,
+        panelistId: dto.panelistId,
         rating: dto.rating,
         comments: dto.comments,
-        recommendation: dto.recommendation,
+        recommendation: dto.recommendation as Recommendation,
       },
     });
   }
@@ -507,7 +502,7 @@ export class RecruitmentRepository {
       ];
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as OfferStatus;
     }
 
     const orderBy: any = {};
@@ -550,13 +545,14 @@ export class RecruitmentRepository {
         salary: dto.salary,
         joiningDate: new Date(dto.joiningDate),
       },
+      include: { candidate: true },
     });
   }
 
   async updateOfferStatus(id: string, status: string) {
     return this.prisma.offerLetter.update({
       where: { id },
-      data: { status },
+      data: { status: status as OfferStatus },
       include: { candidate: true },
     });
   }
@@ -568,6 +564,7 @@ export class RecruitmentRepository {
     return this.prisma.offerLetter.update({
       where: { id },
       data,
+      include: { candidate: true },
     });
   }
 
@@ -644,8 +641,8 @@ export class RecruitmentRepository {
         const lmCount = await this.prisma.departmentLeaveMaster.count({
           where: {
             OR: [
-              { fiscalYear: fy.id },
-              { fiscalYear: { equals: fy.name, mode: 'insensitive' } },
+              { fiscalYearId: fy.id },
+              { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
             ],
           },
         });

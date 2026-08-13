@@ -1,19 +1,13 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
 model User {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  password  String
-  role      String    @default("USER") // ADMIN, HR, EMPLOYEE
-  createdAt DateTime  @default(now())
-  employee  Employee?
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         String        @default("USER") // ADMIN, HR, EMPLOYEE
+  createdAt    DateTime      @default(now())
+  employee     Employee?
+  activityLogs ActivityLog[]
+  interviewFeedbacks InterviewFeedback[]
 }
 
 model Employee {
@@ -24,13 +18,16 @@ model Employee {
   firstName        String
   lastName         String
   email            String               @unique
-  department       String
+  departmentId     String
+  department       Department           @relation(fields: [departmentId], references: [id])
   designation      String
   managerId        String?
+  manager          Employee?            @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates     Employee[]           @relation("EmployeeManager")
   dateOfJoining    DateTime
   probationEnd     DateTime?
-  probationStatus  String               @default("UNDER_REVIEW") // UNDER_REVIEW, CONFIRMED, EXTENDED
-  status           String               @default("ACTIVE") // ONBOARDING, ACTIVE, EXITING, RELIEVED
+  probationStatus  ProbationStatus      @default(UNDER_REVIEW)
+  status           EmployeeStatus       @default(ACTIVE)
   
   // QR Code & Public Profile Details
   phone            String?
@@ -66,18 +63,22 @@ model Employee {
 }
 
 model Department {
-  id           String           @id @default(uuid())
-  name         String           @unique
-  isActive     Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  requisitions JobRequisition[]
+  id             String                  @id @default(uuid())
+  name           String                  @unique
+  isActive       Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  requisitions   JobRequisition[]
+  employees      Employee[]
+  clearanceTasks ClearanceTask[]
+  leaveMasters   DepartmentLeaveMaster[]
 }
 
 model TrainingType {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id              String           @id @default(uuid())
+  name            String           @unique
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  trainingRecords TrainingRecord[]
 }
 
 model JobRequisition {
@@ -87,7 +88,7 @@ model JobRequisition {
   department    Department  @relation(fields: [departmentId], references: [id])
   headcount     Int
   justification String
-  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED, FULFILLED
+  status        JobRequisitionStatus @default(PENDING)
   raisedBy      String
   createdAt     DateTime    @default(now())
   candidates    Candidate[]
@@ -100,7 +101,7 @@ model Candidate {
   phone           String?
   resumeUrl       String?
   source          String              // Referral, Portal, Agency, LinkedIn, Walk-in, Website
-  status          String              @default("SOURCED") // SOURCED, INTERVIEWING, SELECTED, REJECTED, RE_INTERVIEW_ELIGIBLE, OFFERED, ACCEPTED
+  status          CandidateStatus     @default(SOURCED)
   isReInterview   Boolean             @default(false)
   rejectionCount  Int                 @default(0)
   rejectedAt      DateTime?
@@ -120,7 +121,7 @@ model InterviewSchedule {
   roundName     String              // e.g. Technical, HR, Manager
   scheduledAt   DateTime
   panelists     String[]              // Array or comma-separated panelist IDs
-  status        String              @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  status        InterviewStatus     @default(SCHEDULED)
   isReschedule  Boolean             @default(false)
   attemptNumber Int                 @default(1)
   feedbacks     InterviewFeedback[]
@@ -131,9 +132,11 @@ model InterviewFeedback {
   scheduleId     String
   schedule       InterviewSchedule @relation(fields: [scheduleId], references: [id])
   panelistName   String
+  panelistId     String?
+  panelist       User?             @relation(fields: [panelistId], references: [id])
   rating         Int
   comments       String
-  recommendation String            // SELECT, REJECT, HOLD
+  recommendation Recommendation
   createdAt      DateTime          @default(now())
 }
 
@@ -144,8 +147,8 @@ model OfferLetter {
   role        String
   salary      Float
   joiningDate DateTime
-  status      String    @default("GENERATED") // GENERATED, SENT, ACCEPTED, DECLINED
-  createdAt   DateTime  @default(now())
+  status      OfferStatus @default(GENERATED)
+  createdAt   DateTime    @default(now())
 }
 
 model OnboardingDocument {
@@ -153,7 +156,7 @@ model OnboardingDocument {
   employeeId   String
   employee     Employee @relation(fields: [employeeId], references: [id])
   documentType String   // Aadhaar, PAN, Passport, Address Proof, Education Certificates, Previous Employment, Bank Details, Photo
-  status       String   @default("PENDING") // PENDING, SUBMITTED, VERIFIED, REJECTED
+  status       DocumentStatus @default(PENDING)
   fileUrl      String?
   verifiedAt   DateTime?
 }
@@ -164,7 +167,7 @@ model InductionSchedule {
   employee    Employee @relation(fields: [employeeId], references: [id])
   scheduledAt DateTime
   trainer     String
-  status      String   @default("SCHEDULED") // SCHEDULED, COMPLETED
+  status      InductionStatus @default(SCHEDULED)
 }
 
 model SystemAccess {
@@ -178,11 +181,12 @@ model SystemAccess {
 }
 
 model Shift {
-  id        String        @id @default(uuid())
-  name      String        // Morning, Evening, Night, Flexible
-  startTime String        // HH:MM
-  endTime   String
-  rosters   ShiftRoster[]
+  id          String        @id @default(uuid())
+  name        String        // Morning, Evening, Night, Flexible
+  startTime   String        // HH:MM
+  endTime     String
+  rosters     ShiftRoster[]
+  attendances Attendance[]
 }
 
 model ShiftRoster {
@@ -201,8 +205,9 @@ model Attendance {
   date               DateTime
   checkIn            DateTime?
   checkOut           DateTime?
-  status             String    @default("PRESENT") // PRESENT, ABSENT, LATE, HALFDAY
+  status             AttendanceStatus @default(PRESENT)
   shiftId            String?
+  shift              Shift?    @relation(fields: [shiftId], references: [id])
   shiftName          String?
   totalWorkHours     Float?
   otHours            Float?    @default(0)
@@ -233,7 +238,7 @@ model LeaveApplication {
   startDate  DateTime
   endDate    DateTime
   reason     String
-  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  status     LeaveStatus @default(PENDING)
 }
 
 model LeaveLedger {
@@ -257,7 +262,7 @@ model AppraisalCycle {
   name             String            // e.g. FY26 Annual
   startDate        DateTime
   endDate          DateTime
-  status           String            @default("ACTIVE") // ACTIVE, CLOSED
+  status           AppraisalCycleStatus @default(ACTIVE)
   goals            EmployeeGoal[]
   appraisalReviews AppraisalReview[]
 }
@@ -271,7 +276,7 @@ model EmployeeGoal {
   title       String
   description String
   weightage   Int
-  status      String         @default("PENDING") // PENDING, APPROVED, COMPLETED
+  status      GoalStatus @default(PENDING)
 }
 
 model AppraisalReview {
@@ -285,30 +290,31 @@ model AppraisalReview {
   managerRating   Float?
   managerComments String?
   finalRating     Float?
-  status          String         @default("DRAFT") // DRAFT, SELF_REVIEW, MANAGER_REVIEW, COMPLETED
+  status          AppraisalReviewStatus @default(DRAFT)
 }
 
 model TrainingRecord {
-  id             String    @id @default(uuid())
+  id             String       @id @default(uuid())
   employeeId     String
-  employee       Employee  @relation(fields: [employeeId], references: [id])
-  trainingName   String    // e.g. Pharma GMP Compliance
-  trainingType   String    // COMPLIANCE, TECHNICAL, SOFT_SKILLS
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  trainingName   String       // e.g. Pharma GMP Compliance
+  trainingTypeId String
+  trainingType   TrainingType @relation(fields: [trainingTypeId], references: [id])
   completionDate DateTime
   expiryDate     DateTime?
-  status         String    @default("COMPLETED") // COMPLETED, EXPIRED, PENDING
+  status         TrainingStatus @default(COMPLETED)
 }
 
 model ExitProcess {
   id                String                  @id @default(uuid())
   employeeId        String                  @unique
   employee          Employee                @relation(fields: [employeeId], references: [id])
-  type              String                  // RESIGNATION, TERMINATION
+  type              ExitType
   resignationDate   DateTime
   noticePeriodDays  Int
   lastWorkingDay    DateTime
   reason            String
-  status            String                  @default("INITIATED") // INITIATED, CLEARANCE_IN_PROGRESS, SETTLED, COMPLETED
+  status            ExitStatus              @default(INITIATED)
   clearances        ClearanceTask[]
   settlement        FullAndFinalSettlement?
 }
@@ -317,9 +323,10 @@ model ClearanceTask {
   id              String      @id @default(uuid())
   exitProcessId   String
   exitProcess     ExitProcess @relation(fields: [exitProcessId], references: [id])
-  department      String      // IT, Stores, Finance, Library, HR, Admin, Security
+  departmentId    String
+  department      Department  @relation(fields: [departmentId], references: [id])
   taskDescription String
-  status          String      @default("PENDING") // PENDING, CLEARED
+  status          ClearanceStatus @default(PENDING)
   clearedAt       DateTime?
   clearedBy       String?
 }
@@ -333,19 +340,8 @@ model FullAndFinalSettlement {
   bonus          Float
   recoveries     Float
   netPayable     Float
-  paymentStatus  String      @default("UNPAID") // UNPAID, PAID
+  paymentStatus  PaymentStatus @default(UNPAID)
   settlementDate DateTime?
-}
-
-enum GatePassType {
-  INWARD
-  OUTWARD
-}
-
-enum GatePassStatus {
-  GATE_IN
-  COMPLETED
-  CANCELLED
 }
 
 model PassCategory {
@@ -432,25 +428,28 @@ model Supplier {
 }
 
 model DepartmentLeaveMaster {
-  id            String   @id @default(uuid())
-  department    String
-  fiscalYear    String
+  id            String     @id @default(uuid())
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id])
+  fiscalYearId  String
+  fiscalYear    FiscalYear @relation(fields: [fiscalYearId], references: [id])
   casualLeave   Int
   sickLeave     Int
   earnedLeave   Int
-  otherLeave    Int      @default(0)
+  otherLeave    Int        @default(0)
   totalLeave    Int
   effectiveFrom DateTime
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  @@unique([department, fiscalYear])
+  @@unique([departmentId, fiscalYearId])
 }
 
 model ActivityLog {
   id           String   @id @default(uuid())
-  userId       String?  // The user ID who performed the action, null if guest/system
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
   userEmail    String?  // User email
   userName     String?  // User name
   userRole     String?  // User role
@@ -486,7 +485,7 @@ model SalaryStructure {
   pfAmount         Float    @default(0.0)
   esiAmount        Float    @default(0.0)
   ptAmount         Float    @default(0.0)
-  taxRegime        String   @default("NEW") // OLD, NEW
+  taxRegime        TaxRegime @default(NEW)
   effectiveFrom    DateTime @default(now())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -495,38 +494,40 @@ model SalaryStructure {
 }
 
 model HraRentReceipt {
-  id                  String    @id @default(uuid())
+  id                  String     @id @default(uuid())
   employeeId          String
-  employee            Employee  @relation(fields: [employeeId], references: [id])
-  financialYear       String    // e.g. 2026-2027
+  employee            Employee   @relation(fields: [employeeId], references: [id])
+  financialYearId     String
+  financialYear       FiscalYear @relation(fields: [financialYearId], references: [id])
   landlordName        String
   landlordPan         String?
   landlordAddress     String
   monthlyRent         Float
   annualRent          Float
   rentReceiptUrl      String?
-  status              String    @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED
+  status              RentReceiptStatus @default(SUBMITTED)
   verifiedBy          String?
   verifiedAt          DateTime?
-  calculatedExemption Float     @default(0.0)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  calculatedExemption Float      @default(0.0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 }
 
 model TaxDeclaration {
-  id                 String   @id @default(uuid())
+  id                 String     @id @default(uuid())
   employeeId         String
-  employee           Employee @relation(fields: [employeeId], references: [id])
-  financialYear      String   // e.g. 2026-2027
-  regime             String   @default("NEW") // OLD, NEW
-  section80C         Float    @default(0.0)
-  section80D         Float    @default(0.0)
-  section80G         Float    @default(0.0)
-  otherDeductions    Float    @default(0.0)
-  hraExemptionAmount Float    @default(0.0)
-  status             String   @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  employee           Employee   @relation(fields: [employeeId], references: [id])
+  financialYearId    String
+  financialYear      FiscalYear @relation(fields: [financialYearId], references: [id])
+  regime             TaxRegime  @default(NEW)
+  section80C         Float      @default(0.0)
+  section80D         Float      @default(0.0)
+  section80G         Float      @default(0.0)
+  otherDeductions    Float      @default(0.0)
+  hraExemptionAmount Float      @default(0.0)
+  status             TaxDeclarationStatus @default(SUBMITTED)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 }
 
 model EmployeeLoan {
@@ -537,8 +538,8 @@ model EmployeeLoan {
   principalAmount    Float
   monthlyInstallment Float
   balanceRemaining   Float
-  status             String   @default("ACTIVE") // ACTIVE, PAID_OFF, CANCELLED
-  disbursedAt        DateTime @default(now())
+  status             LoanStatus @default(ACTIVE)
+  disbursedAt        DateTime   @default(now())
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -547,8 +548,8 @@ model PayrollRun {
   id             String    @id @default(uuid())
   month          Int
   year           Int
-  status         String    @default("DRAFT") // DRAFT, PREVIEW, APPROVED, PROCESSED
-  totalEmployees Int       @default(0)
+  status         PayrollStatus @default(DRAFT)
+  totalEmployees Int           @default(0)
   totalGross     Float     @default(0.0)
   totalNet       Float     @default(0.0)
   approvedBy     String?
@@ -595,16 +596,18 @@ model Payslip {
   bankName         String?
   accountNumber    String?
   ifscCode         String?
-  status           String      @default("GENERATED") // GENERATED, PAID
-  createdAt        DateTime    @default(now())
+  status           PayslipStatus @default(GENERATED)
+  createdAt        DateTime      @default(now())
   updatedAt        DateTime    @updatedAt
 }
 
 model FiscalYear {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String                  @id @default(uuid())
+  name            String                  @unique
+  isActive        Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  leaveMasters    DepartmentLeaveMaster[]
+  taxDeclarations TaxDeclaration[]
+  rentReceipts    HraRentReceipt[]
 }
-

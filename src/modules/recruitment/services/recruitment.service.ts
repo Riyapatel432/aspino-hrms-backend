@@ -92,14 +92,9 @@ export class RecruitmentService {
 
     const [reqCount, empCount, lmCount] = await Promise.all([
       this.prisma.jobRequisition.count({ where: { departmentId: id } }),
-      this.prisma.employee.count({ where: { department: { equals: dept.name, mode: 'insensitive' } } }),
+      this.prisma.employee.count({ where: { departmentId: id } }),
       this.prisma.departmentLeaveMaster.count({
-        where: {
-          OR: [
-            { department: id },
-            { department: { equals: dept.name, mode: 'insensitive' } },
-          ],
-        },
+        where: { departmentId: id },
       }),
     ]);
 
@@ -171,7 +166,7 @@ export class RecruitmentService {
     if (!type) return;
 
     const trainCount = await this.prisma.trainingRecord.count({
-      where: { trainingType: { equals: type.name, mode: 'insensitive' } },
+      where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
     });
     if (trainCount > 0) {
       throw new ConflictException(
@@ -532,13 +527,16 @@ export class RecruitmentService {
         probationEnd.setMonth(probationEnd.getMonth() + PROBATION_MONTHS);
 
         // 6. Create employee record
+        const dept = await tx.department.findUnique({
+          where: { name: DEFAULT_EMPLOYEE_DEPARTMENT },
+        });
         const employee = await tx.employee.create({
           data: {
             employeeId: empId,
             firstName,
             lastName,
             email: candEmail,
-            department: DEFAULT_EMPLOYEE_DEPARTMENT,
+            departmentId: dept?.id || (await tx.department.findFirst())?.id || '',
             designation: offer.role,
             dateOfJoining: joiningDate,
             status: 'ONBOARDING',
@@ -614,8 +612,8 @@ export class RecruitmentService {
     const lmCount = await this.prisma.departmentLeaveMaster.count({
       where: {
         OR: [
-          { fiscalYear: id },
-          { fiscalYear: { equals: fy.name, mode: 'insensitive' } },
+          { fiscalYearId: id },
+          { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
         ],
       },
     });

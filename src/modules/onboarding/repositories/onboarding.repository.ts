@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, EmployeeStatus, DocumentStatus, InductionStatus, ProbationStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
@@ -22,10 +22,10 @@ export class OnboardingRepository {
       where.OR = buildEmployeeSearchConditions(query.search);
     }
     if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
+      where.status = query.status as EmployeeStatus;
     }
     if (query.department && query.department !== 'ALL') {
-      where.department = query.department;
+      where.departmentId = query.department;
     }
 
     const orderBy: any = {};
@@ -38,6 +38,7 @@ export class OnboardingRepository {
     const findOptions: Prisma.EmployeeFindManyArgs = {
       where,
       include: {
+        department: true,
         documents: true,
         induction: true,
         leaveBalances: true,
@@ -61,7 +62,7 @@ export class OnboardingRepository {
   async updateDocumentStatus(id: string, status: string) {
     return this.prisma.onboardingDocument.update({
       where: { id },
-      data: { status, verifiedAt: status === 'VERIFIED' ? new Date() : null },
+      data: { status: status as DocumentStatus, verifiedAt: status === 'VERIFIED' ? new Date() : null },
     });
   }
 
@@ -82,7 +83,7 @@ export class OnboardingRepository {
   async updateInductionStatus(id: string, status: string) {
     return this.prisma.inductionSchedule.update({
       where: { id },
-      data: { status },
+      data: { status: status as InductionStatus },
     });
   }
 
@@ -90,7 +91,7 @@ export class OnboardingRepository {
     const employee = await this.prisma.employee.update({
       where: { id },
       data: {
-        probationStatus: status,
+        probationStatus: status as ProbationStatus,
         ...(status === 'CONFIRMED' ? { status: 'ACTIVE' } : {}),
       },
     });
@@ -176,7 +177,7 @@ export class OnboardingRepository {
     }
     return this.prisma.onboardingDocument.update({
       where: { id },
-      data: { fileUrl: finalUrl, status },
+      data: { fileUrl: finalUrl, status: status as DocumentStatus },
     });
   }
 

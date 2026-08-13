@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, TrainingStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
@@ -18,24 +18,30 @@ export class TrainingRepository {
     const where: Prisma.TrainingRecordWhereInput = {};
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
+      const searchUpper = query.search.toUpperCase().trim();
+      const isValidStatus = Object.values(TrainingStatus).includes(searchUpper as any);
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { trainingName: { contains: query.search, mode: 'insensitive' } },
-        { trainingType: { contains: query.search, mode: 'insensitive' } },
-        { status: { contains: query.search, mode: 'insensitive' } },
+        { trainingType: { name: { contains: query.search, mode: 'insensitive' } } },
+        ...(isValidStatus ? [{ status: searchUpper as TrainingStatus }] : []),
       ];
     }
     if (query.employeeId) {
       where.employeeId = query.employeeId;
     }
     if (query.trainingType && query.trainingType !== 'ALL') {
-      where.trainingType = query.trainingType;
+      where.trainingTypeId = query.trainingType;
     }
 
     const allowedTrainSortFields = ['trainingName', 'trainingType', 'completionDate', 'expiryDate', 'status'];
     const orderBy: any = {};
     if (query.sortBy && allowedTrainSortFields.includes(query.sortBy)) {
-      orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+      if (query.sortBy === 'trainingType') {
+        orderBy.trainingType = { name: (query.sortOrder || 'desc').toLowerCase() };
+      } else {
+        orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
+      }
     } else {
       orderBy.completionDate = 'desc';
     }
@@ -45,7 +51,7 @@ export class TrainingRepository {
         where,
         skip,
         take: limit,
-        include: { employee: true },
+        include: { employee: true, trainingType: true },
         orderBy,
       }),
       this.prisma.trainingRecord.count({ where }),
@@ -61,11 +67,19 @@ export class TrainingRepository {
     completionDate: string;
     expiryDate?: string;
   }) {
+    let tType = await this.prisma.trainingType.findFirst({
+      where: { name: { equals: dto.trainingType, mode: 'insensitive' } },
+    });
+    if (!tType) {
+      tType = await this.prisma.trainingType.create({
+        data: { name: dto.trainingType },
+      });
+    }
     return this.prisma.trainingRecord.create({
       data: {
         employeeId: dto.employeeId,
         trainingName: dto.trainingName,
-        trainingType: dto.trainingType,
+        trainingTypeId: tType.id,
         completionDate: new Date(dto.completionDate),
         expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
       },
@@ -87,7 +101,17 @@ export class TrainingRepository {
       data.employee = { connect: { id: dto.employeeId } };
     }
     if (dto.trainingName) data.trainingName = dto.trainingName;
-    if (dto.trainingType) data.trainingType = dto.trainingType;
+    if (dto.trainingType) {
+      let tType = await this.prisma.trainingType.findFirst({
+        where: { name: { equals: dto.trainingType, mode: 'insensitive' } },
+      });
+      if (!tType) {
+        tType = await this.prisma.trainingType.create({
+          data: { name: dto.trainingType },
+        });
+      }
+      data.trainingType = { connect: { id: tType.id } };
+    }
     if (dto.completionDate) data.completionDate = new Date(dto.completionDate);
     if (dto.expiryDate) data.expiryDate = new Date(dto.expiryDate);
 
