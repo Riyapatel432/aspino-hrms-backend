@@ -75,6 +75,8 @@ enum AttendanceStatus {
   ABSENT
   LATE
   HALFDAY
+  ON_LEAVE
+  HOLIDAY
 }
 
 enum LeaveStatus {

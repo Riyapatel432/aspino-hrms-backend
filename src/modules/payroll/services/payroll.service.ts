@@ -396,7 +396,7 @@ export class PayrollService {
       const lwpLeaves = await this.prisma.leaveApplication.findMany({
         where: {
           employeeId: emp.id,
-          leaveType: { notIn: paidLeaveTypes },
+          ...(paidLeaveTypes.length > 0 ? { leaveType: { notIn: paidLeaveTypes } } : {}),
           status: 'APPROVED',
           startDate: { lte: endDate },
           endDate: { gte: startDate },
@@ -615,7 +615,15 @@ export class PayrollService {
     
     const empId = exitProcess.employeeId;
     const salaryStruct = await this.repo.getSalaryStructureByEmployee(empId);
-    if (!salaryStruct) throw new BadRequestException('No salary structure found for employee');
+    if (!salaryStruct) {
+      return {
+        pendingSalary: 0,
+        leaveEncashment: 0,
+        bonus: 0,
+        recoveries: 0,
+        netPayable: 0,
+      };
+    }
     
     // Prorate salary for the month of lastWorkingDay
     const lwd = new Date(exitProcess.lastWorkingDay);

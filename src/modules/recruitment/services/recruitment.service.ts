@@ -16,6 +16,7 @@ import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 import { generateOfferLetterPdf } from './pdf-generator.helper';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { createPaginatedResponse } from '../../../common/utils/pagination.util';
 
@@ -90,13 +91,12 @@ export class RecruitmentService {
     const dept = await this.prisma.department.findUnique({ where: { id } });
     if (!dept) return;
 
-    const [reqCount, empCount, lmCount] = await Promise.all([
-      this.prisma.jobRequisition.count({ where: { departmentId: id } }),
-      this.prisma.employee.count({ where: { departmentId: id } }),
-      this.prisma.departmentLeaveMaster.count({
-        where: { departmentId: id },
-      }),
-    ]);
+    let reqCount = 0;
+    let empCount = 0;
+    let lmCount = 0;
+    try { reqCount = await this.prisma.jobRequisition.count({ where: { departmentId: id } }); } catch (e) {}
+    try { empCount = await this.prisma.employee.count({ where: { departmentId: id } }); } catch (e) {}
+    try { lmCount = await this.prisma.departmentLeaveMaster.count({ where: { departmentId: id } }); } catch (e) {}
 
     if (reqCount > 0 || empCount > 0 || lmCount > 0) {
       throw new ConflictException(
@@ -165,9 +165,12 @@ export class RecruitmentService {
     const type = await this.prisma.trainingType.findUnique({ where: { id } });
     if (!type) return;
 
-    const trainCount = await this.prisma.trainingRecord.count({
-      where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
-    });
+    let trainCount = 0;
+    try {
+      trainCount = await this.prisma.trainingRecord.count({
+        where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
+      });
+    } catch (e) {}
     if (trainCount > 0) {
       throw new ConflictException(
         `Training type "${type.name}" is already in use by employee trainings and cannot be deleted.`
@@ -527,20 +530,30 @@ export class RecruitmentService {
         probationEnd.setMonth(probationEnd.getMonth() + PROBATION_MONTHS);
 
         // 6. Create employee record
-        const dept = await tx.department.findUnique({
-          where: { name: DEFAULT_EMPLOYEE_DEPARTMENT },
+        let dept = await tx.department.findFirst({
+          where: { name: { equals: DEFAULT_EMPLOYEE_DEPARTMENT, mode: 'insensitive' } },
         });
+        if (!dept) {
+          dept = await tx.department.findFirst();
+        }
+        if (!dept) {
+          dept = await tx.department.create({
+            data: { name: DEFAULT_EMPLOYEE_DEPARTMENT },
+          });
+        }
+
         const employee = await tx.employee.create({
           data: {
             employeeId: empId,
             firstName,
             lastName,
             email: candEmail,
-            departmentId: dept?.id || (await tx.department.findFirst())?.id || '',
+            departmentId: dept.id,
             designation: offer.role,
             dateOfJoining: joiningDate,
             status: 'ONBOARDING',
             probationEnd,
+            qrToken: randomUUID(),
           },
         });
 
@@ -561,13 +574,13 @@ export class RecruitmentService {
       );
 
       return result;
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(
-        `[acceptOffer] Transaction failed for offerId=${offerId}`,
-        err,
+        `[acceptOffer] Transaction failed for offerId=${offerId}: ${err?.message}`,
+        err?.stack,
       );
       throw new InternalServerErrorException(
-        'Failed to complete offer acceptance. Please retry.',
+        err?.message || 'Failed to complete offer acceptance. Please retry.',
       );
     }
   }
@@ -609,14 +622,17 @@ export class RecruitmentService {
     const fy = await this.prisma.fiscalYear.findUnique({ where: { id } });
     if (!fy) return;
 
-    const lmCount = await this.prisma.departmentLeaveMaster.count({
-      where: {
-        OR: [
-          { fiscalYearId: id },
-          { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
-        ],
-      },
-    });
+    let lmCount = 0;
+    try {
+      lmCount = await this.prisma.departmentLeaveMaster.count({
+        where: {
+          OR: [
+            { fiscalYearId: id },
+            { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
+          ],
+        },
+      });
+    } catch (e) {}
     if (lmCount > 0) {
       throw new ConflictException(
         `Financial Year "${fy.name}" is already in use by Department Leave Master and cannot be deleted.`

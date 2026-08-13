@@ -15,9 +15,9 @@ import { AttendanceService } from '../services/attendance.service';
 import { CreateShiftDto } from '../dto/create-shift.dto';
 import { CreateRosterDto } from '../dto/create-roster.dto';
 import { CaptureAttendanceDto } from '../dto/capture-attendance.dto';
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../auth/guards/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)

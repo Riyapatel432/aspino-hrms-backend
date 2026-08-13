@@ -47,12 +47,14 @@ export class RecruitmentRepository {
 
     const dataWithCounts = await Promise.all(
       data.map(async (dept) => {
-        const [reqCount, lmCount] = await Promise.all([
-          this.prisma.jobRequisition.count({ where: { departmentId: dept.id } }),
-          this.prisma.departmentLeaveMaster.count({
-            where: { departmentId: dept.id },
-          }),
-        ]);
+        let reqCount = 0;
+        let lmCount = 0;
+        try {
+          reqCount = await this.prisma.jobRequisition.count({ where: { departmentId: dept.id } });
+        } catch (e) {}
+        try {
+          lmCount = await this.prisma.departmentLeaveMaster.count({ where: { departmentId: dept.id } });
+        } catch (e) {}
         return {
           ...dept,
           activeRequisitions: reqCount + lmCount,
@@ -120,9 +122,12 @@ export class RecruitmentRepository {
 
     const dataWithCounts = await Promise.all(
       data.map(async (type) => {
-        const trainCount = await this.prisma.trainingRecord.count({
-          where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
-        });
+        let trainCount = 0;
+        try {
+          trainCount = await this.prisma.trainingRecord.count({
+            where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
+          });
+        } catch (e) {}
         return {
           ...type,
           activeTrainings: trainCount,
@@ -638,14 +643,17 @@ export class RecruitmentRepository {
 
     const dataWithCounts = await Promise.all(
       data.map(async (fy) => {
-        const lmCount = await this.prisma.departmentLeaveMaster.count({
-          where: {
-            OR: [
-              { fiscalYearId: fy.id },
-              { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
-            ],
-          },
-        });
+        let lmCount = 0;
+        try {
+          lmCount = await this.prisma.departmentLeaveMaster.count({
+            where: {
+              OR: [
+                { fiscalYearId: fy.id },
+                { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
+              ],
+            },
+          });
+        } catch (e) {}
         return {
           ...fy,
           activeRequisitions: lmCount,

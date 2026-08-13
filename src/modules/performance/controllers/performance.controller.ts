@@ -14,9 +14,9 @@ import { PerformanceService } from '../services/performance.service';
 import { CreateAppraisalCycleDto } from '../dto/create-cycle.dto';
 import { CreateGoalDto } from '../dto/create-goal.dto';
 import { CreateReviewDto } from '../dto/create-review.dto';
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../auth/guards/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @Controller('performance')
 @UseGuards(JwtAuthGuard, RolesGuard)

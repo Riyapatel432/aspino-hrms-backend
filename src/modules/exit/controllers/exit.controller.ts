@@ -13,9 +13,9 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { ExitService } from '../services/exit.service';
 import { InitiateExitDto } from '../dto/initiate-exit.dto';
 import { ProcessSettlementDto } from '../dto/process-settlement.dto';
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../auth/guards/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @Controller('exit')
 @UseGuards(JwtAuthGuard, RolesGuard)

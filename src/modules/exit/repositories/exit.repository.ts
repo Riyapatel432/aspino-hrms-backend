@@ -52,7 +52,9 @@ export class ExitRepository {
           employee: {
             include: { leaveBalances: true },
           },
-          clearances: true,
+          clearances: {
+            include: { department: true },
+          },
           settlement: true,
         },
         orderBy,

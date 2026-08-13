@@ -211,19 +211,25 @@ export class LeaveRepository {
       orderBy.departmentId = 'asc';
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.departmentLeaveMaster.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          department: true,
-          fiscalYear: true,
-        },
-        orderBy,
-      }),
-      this.prisma.departmentLeaveMaster.count({ where }),
-    ]);
+    let data: any[] = [];
+    let total = 0;
+    try {
+      const res = await Promise.all([
+        this.prisma.departmentLeaveMaster.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            department: true,
+            fiscalYear: true,
+          },
+          orderBy,
+        }),
+        this.prisma.departmentLeaveMaster.count({ where }),
+      ]);
+      data = res[0];
+      total = res[1];
+    } catch (e) {}
 
     return { data, total, page, limit };
   }

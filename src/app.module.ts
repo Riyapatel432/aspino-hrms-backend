@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { EmployeesController } from './employees.controller';
 import { PrismaModule } from './database/prisma/prisma.module';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -22,6 +22,7 @@ import { TrainingModule } from './modules/training/training.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    EmployeesModule,
     AttendanceModule,
     AuditModule,
     ExitModule,
@@ -48,7 +49,7 @@ import { TrainingModule } from './modules/training/training.module';
       },
     ]),
   ],
-  controllers: [AppController, EmployeesController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule { }

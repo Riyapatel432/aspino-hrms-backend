@@ -607,7 +607,7 @@ export class PayrollRepository {
   // Active Direct Employees for Payroll
   async getDirectEmployeesForPayroll() {
     return this.prisma.employee.findMany({
-      where: { status: { in: ['ACTIVE', 'ONBOARDING'] } },
+      where: { status: { in: ['ACTIVE', 'ONBOARDING', 'EXITING', 'RELIEVED'] } },
       include: {
         salaryStructures: true,
         loans: { where: { status: 'ACTIVE' } },

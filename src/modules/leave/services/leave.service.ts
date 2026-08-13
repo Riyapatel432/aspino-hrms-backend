@@ -163,6 +163,42 @@ export class LeaveService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
+  private async resolveDepartmentId(value: string): Promise<string> {
+    if (!value) return value;
+    try {
+      const byId = await this.prisma.department.findUnique({ where: { id: value } });
+      if (byId) return byId.id;
+    } catch (e) {}
+    try {
+      const byName = await this.prisma.department.findFirst({
+        where: { name: { equals: value, mode: 'insensitive' } },
+      });
+      if (byName) return byName.id;
+      const created = await this.prisma.department.create({ data: { name: value } });
+      return created.id;
+    } catch (e) {
+      return value;
+    }
+  }
+
+  private async resolveFiscalYearId(value: string): Promise<string> {
+    if (!value) return value;
+    try {
+      const byId = await this.prisma.fiscalYear.findUnique({ where: { id: value } });
+      if (byId) return byId.id;
+    } catch (e) {}
+    try {
+      const byName = await this.prisma.fiscalYear.findFirst({
+        where: { name: { equals: value, mode: 'insensitive' } },
+      });
+      if (byName) return byName.id;
+      const created = await this.prisma.fiscalYear.create({ data: { name: value } });
+      return created.id;
+    } catch (e) {
+      return value;
+    }
+  }
+
   async createLeaveMaster(dto: {
     department: string;
     fiscalYear: string;
@@ -172,20 +208,34 @@ export class LeaveService {
     otherLeave: number;
     effectiveFrom: string;
   }) {
+    const departmentId = await this.resolveDepartmentId(dto.department);
+    const fiscalYearId = await this.resolveFiscalYearId(dto.fiscalYear);
+
     const existing = await this.prisma.departmentLeaveMaster.findFirst({
       where: {
-        departmentId: dto.department,
-        fiscalYearId: dto.fiscalYear,
+        departmentId,
+        fiscalYearId,
       },
     });
     if (existing) {
-      throw new ConflictException(`Leave master for department "${dto.department}" and fiscal year "${dto.fiscalYear}" already exists.`);
+      throw new ConflictException(`Leave master for selected department and fiscal year already exists.`);
     }
-    return this.leaveRepository.createLeaveMaster(dto);
+    return this.leaveRepository.createLeaveMaster({
+      ...dto,
+      department: departmentId,
+      fiscalYear: fiscalYearId,
+    });
   }
 
   async updateLeaveMaster(id: string, data: any) {
-    return this.leaveRepository.updateLeaveMaster(id, data);
+    const payload = { ...data };
+    if (payload.department) {
+      payload.department = await this.resolveDepartmentId(payload.department);
+    }
+    if (payload.fiscalYear) {
+      payload.fiscalYear = await this.resolveFiscalYearId(payload.fiscalYear);
+    }
+    return this.leaveRepository.updateLeaveMaster(id, payload);
   }
 
   async deleteLeaveMaster(id: string) {

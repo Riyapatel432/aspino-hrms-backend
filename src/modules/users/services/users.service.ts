@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { UserRepository } from './repositories/user.repository';
+import { UserRepository } from '../repositories/user.repository';
 import { Prisma, User } from '@prisma/client';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { createPaginatedResponse } from '../common/utils/pagination.util';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../common/utils/pagination.util';
 
 import * as bcrypt from 'bcrypt';
 

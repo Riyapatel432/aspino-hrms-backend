@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UserRepository } from '../users/repositories/user.repository';
-import { AdminLoginDto } from './dto/admin-login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { createPaginatedResponse } from '../common/utils/pagination.util';
+import { UserRepository } from '../../users/repositories/user.repository';
+import { AdminLoginDto } from '../dto/admin-login.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { createPaginatedResponse } from '../../../common/utils/pagination.util';
 
 @Injectable()
 export class AuthService {
@@ -22,9 +22,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) { }
 
-  /**
-   * Admin Login ONLY
-   */
   async loginAdmin(loginDto: AdminLoginDto) {
     const { email, password } = loginDto;
     console.log('loginDto===>', loginDto);
@@ -60,9 +57,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Change Password (for logged-in Admin)
-   */
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const { currentPassword, newPassword } = changePasswordDto;
 
@@ -87,9 +81,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Forgot Password / Reset Password
-   */
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email, newPassword } = forgotPasswordDto;
 

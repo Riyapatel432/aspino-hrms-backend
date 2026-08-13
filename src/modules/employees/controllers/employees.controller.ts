@@ -6,7 +6,7 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { PrismaService } from './database/prisma/prisma.service';
+import { PrismaService } from '../../../database/prisma/prisma.service';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 import * as fs from 'fs';
@@ -282,4 +282,3 @@ export class EmployeesController {
     doc.end();
   }
 }
-
