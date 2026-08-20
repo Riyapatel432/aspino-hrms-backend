@@ -29,6 +29,11 @@ enum JobRequisitionStatus {
   FULFILLED
 }
 
+enum RequisitionType {
+  NEW_REQUIREMENT
+  REPLACEMENT
+}
+
 enum CandidateStatus {
   SOURCED
   INTERVIEWING

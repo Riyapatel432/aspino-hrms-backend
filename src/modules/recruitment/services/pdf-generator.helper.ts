@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import PDFDocument = require('pdfkit');
 
 export interface OfferPdfData {
@@ -9,19 +10,40 @@ export interface OfferPdfData {
   joiningDate: Date | string;
 }
 
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function formatLetterDate(dateVal: Date | string): string {
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const day = getOrdinal(d.getDate());
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+function formatJoiningDateFull(dateVal: Date | string): string {
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const day = getOrdinal(d.getDate());
+  const month = d.toLocaleString('en-US', { month: 'long' });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
 export function generateOfferLetterPdf(
   filePath: string,
   data: OfferPdfData,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      // Create A4 PDF Document with 35pt margins
       const doc = new PDFDocument({
         size: 'A4',
-        margin: 35,
+        margin: 0,
       });
 
-      // Strict 1-Page Guard: Override addPage after page 1 so PDFKit can NEVER create extra pages
+      // Strict 1-Page Guard
       doc.addPage = function () {
         return this;
       };
@@ -29,309 +51,260 @@ export function generateOfferLetterPdf(
       const writeStream = fs.createWriteStream(filePath);
       doc.pipe(writeStream);
 
-      // ----------------------------------------------------
-      // TOP DECORATIVE CORPORATE BORDER
-      // ----------------------------------------------------
-      doc.rect(0, 0, 595, 12).fill('#0f172a'); // Deep charcoal header bar
-      doc.rect(0, 12, 595, 3).fill('#0ea5e9'); // Sky blue accent line
+      const year = new Date().getFullYear();
+      const refNo = `Ref.ASCPL/OL-${year}-003`;
+      const dateFormatted = formatLetterDate(new Date());
+      const joiningDateFormatted = formatJoiningDateFull(data.joiningDate);
+      const roleUpper = (data.role || 'PACKING SUPERVISOR').toUpperCase();
+      const salaryClause = data.salary
+        ? `Your annual salary package shall be mutually agreed at Rs. ${Number(data.salary).toLocaleString('en-IN')}/- per annum at the time of an Interview.`
+        : 'Your annual salary package shall be mutually agreed at the time of an Interview.';
 
       // ----------------------------------------------------
-      // HEADER SECTION
+      // TOP DECORATIONS
       // ----------------------------------------------------
-      doc.y = 30;
+      // Top-Left Blue Tab
+      doc.save();
       doc
-        .fillColor('#0f172a')
-        .fontSize(22)
+        .path('M 0 0 L 195 0 C 175 22, 145 28, 110 28 L 0 28 Z')
+        .fill('#2073bd');
+      doc.restore();
+
+      // Top-Right Ribbon Wings
+      doc.save();
+      doc
+        .path(
+          'M 595 0 C 570 30, 535 25, 515 45 C 500 62, 510 82, 535 98 C 550 85, 545 68, 560 55 C 578 35, 590 20, 595 0 Z',
+        )
+        .fillOpacity(0.85)
+        .fill('#38bdf8');
+      doc
+        .path(
+          'M 595 10 C 575 40, 545 35, 525 55 C 510 72, 520 90, 545 98 C 535 85, 530 72, 545 60 C 565 42, 582 28, 595 10 Z',
+        )
+        .fill('#1b75bb');
+      doc
+        .path(
+          'M 595 22 C 580 48, 555 45, 540 65 C 525 80, 535 93, 555 98 C 545 88, 540 78, 555 68 C 572 52, 588 35, 595 22 Z',
+        )
+        .fill('#173660');
+      doc.restore();
+
+      // ----------------------------------------------------
+      // WATERMARK
+      // ----------------------------------------------------
+      const logoPaths = [
+        path.resolve(process.cwd(), 'uploads/aspino-logo.png'),
+        path.resolve(process.cwd(), '../nextjs-aspino-hrms/public/aspino-logo.png'),
+      ];
+      let foundLogo = '';
+      for (const p of logoPaths) {
+        if (fs.existsSync(p)) {
+          foundLogo = p;
+          break;
+        }
+      }
+
+      if (foundLogo) {
+        doc.save();
+        doc.opacity(0.045);
+        doc.image(foundLogo, 175, 300, { width: 245 });
+        doc.restore();
+      }
+
+      // ----------------------------------------------------
+      // HEADER CONTENT (LOGO & CIN)
+      // ----------------------------------------------------
+      if (foundLogo) {
+        doc.image(foundLogo, 45, 34, { width: 90 });
+      } else {
+        doc
+          .fillColor('#1b75bb')
+          .fontSize(16)
+          .font('Helvetica-Bold')
+          .text('ASPINO', 45, 38);
+        doc
+          .fillColor('#1e293b')
+          .fontSize(7.5)
+          .font('Helvetica')
+          .text('Aspino Speciality Chemicals Private Limited', 45, 54);
+      }
+
+      doc
+        .fillColor('#1e293b')
+        .fontSize(8)
         .font('Helvetica-Bold')
-        .text('ASPINO CHEMICALS CORP', 40, 30, {
-          align: 'center',
-          characterSpacing: 1,
+        .text('CIN: U20297GJ2024PTC150782', 300, 115, {
+          align: 'right',
+          width: 250,
         });
-      doc.y = 56;
+
+      // ----------------------------------------------------
+      // RECIPIENT & REF DETAILS
+      // ----------------------------------------------------
+      let currentY = 162;
       doc
-        .fontSize(8.5)
-        .font('Helvetica-Bold')
-        .fillColor('#0ea5e9')
-        .text('GMP CERTIFIED PHARMACEUTICAL & CHEMICAL UNIT', 40, 56, {
-          align: 'center',
-        });
-      doc.y = 68;
-      doc
-        .fontSize(7.5)
+        .fillColor('#1e293b')
+        .fontSize(9)
         .font('Helvetica')
-        .fillColor('#64748b')
+        .text(`${refNo}`, 45, currentY);
+
+      currentY += 13;
+      doc.text(`Dt. ${dateFormatted}`, 45, currentY);
+
+      currentY += 13;
+      doc.text(`Mr. ${data.candidateName || 'Ravi Babariya'},`, 45, currentY);
+
+      currentY += 11;
+      doc.text('Dadri, Kosamba Tarsadi', 45, currentY);
+      currentY += 10;
+      doc.text('Surat', 45, currentY);
+      currentY += 10;
+      doc.text('Gujarat- 394 120', 45, currentY);
+
+      // ----------------------------------------------------
+      // TITLE: OFFER LETTER
+      // ----------------------------------------------------
+      currentY += 24;
+      doc
+        .fillColor('#162a55')
+        .fontSize(11.5)
+        .font('Helvetica-Bold')
+        .text('OFFER LETTER', 45, currentY, {
+          align: 'center',
+          width: 505,
+          underline: true,
+        });
+
+      // ----------------------------------------------------
+      // INTRODUCTORY PARAGRAPH
+      // ----------------------------------------------------
+      currentY += 22;
+      doc
+        .fillColor('#162a55')
+        .fontSize(8.8)
+        .font('Helvetica-Bold')
         .text(
-          'HQ: Industrial Estate, Sector 5, India | Email: hr@aspinochemicals.com',
-          40,
-          68,
-          { align: 'center' },
+          'This has reference to your application and the subsequent interview you had with us, we are pleased to confirm our decision wherein we have mutually agreed upon the following:',
+          45,
+          currentY,
+          { width: 505, align: 'justify', lineGap: 2.5 },
         );
 
-      // Clean divider line
-      doc
-        .moveTo(40, 82)
-        .lineTo(555, 82)
-        .strokeColor('#e2e8f0')
-        .lineWidth(1)
-        .stroke();
+      // ----------------------------------------------------
+      // NUMBERED TERMS & CONDITIONS
+      // ----------------------------------------------------
+      currentY += 26;
+      doc.fillColor('#1e293b').font('Helvetica').fontSize(8.8);
+
+      const terms = [
+        `1. You shall be designated as "${roleUpper}".`,
+        `2. ${salaryClause}`,
+        `3. Acceptance of the offer would automatically bind you to agree with all the terms and conditions of the employment as discussed during the interview.`,
+        `4. You will come to finish all formalities and collect appointment letter on or before ${joiningDateFormatted}`,
+      ];
+
+      for (const term of terms) {
+        doc.text(term, 45, currentY, {
+          width: 505,
+          align: 'justify',
+          lineGap: 2,
+        });
+        currentY += doc.heightOfString(term, { width: 505, lineGap: 2 }) + 4;
+      }
 
       // ----------------------------------------------------
-      // METADATA & RECIPIENT
+      // DOCUMENT CHECKLIST
       // ----------------------------------------------------
-      const formattedDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-
-      doc.y = 94;
+      currentY += 5;
       doc
-        .fillColor('#64748b')
-        .fontSize(9)
-        .font('Helvetica')
-        .text(`Date: ${formattedDate}`, 40, 94, { align: 'right', width: 515 });
-
-      doc.y = 94;
-      doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9.5).text('To,', 40, 94);
-      doc.y = 106;
-      doc.fontSize(11).font('Helvetica-Bold').text(data.candidateName, 40, 106);
-      doc.y = 120;
-      doc
-        .fontSize(9)
-        .font('Helvetica')
-        .fillColor('#475569')
-        .text(`Email: ${data.candidateEmail}`, 40, 120);
-
-      // ----------------------------------------------------
-      // SUBJECT BLOCK
-      // ----------------------------------------------------
-      const subjectY = 138;
-      doc.rect(40, subjectY, 515, 24).fill('#f8fafc');
-      doc.rect(40, subjectY, 3, 24).fill('#0ea5e9'); // Left border accent line
-      doc.y = subjectY + 7;
-      doc
-        .fillColor('#0f172a')
-        .fontSize(10)
         .font('Helvetica-Bold')
-        .text('Subject: Appointment & Offer of Employment', 52, subjectY + 7);
-
-      // ----------------------------------------------------
-      // SALUTATION & INTRODUCTION BODY
-      // ----------------------------------------------------
-      let bodyY = 172;
-      doc.y = bodyY;
-      doc
-        .fillColor('#334155')
-        .fontSize(9.5)
-        .font('Helvetica')
-        .text(`Dear ${data.candidateName},`, 40, bodyY);
-
-      bodyY += 16;
-      doc.y = bodyY;
-      doc.text(
-        `We are pleased to extend to you a formal offer of employment for the position of ${data.role} at Aspino Chemicals Corp. Following our comprehensive interview process and review of your professional accomplishments, we are confident that your technical expertise, qualifications, and industry knowledge will make a substantial contribution to the success and strategic objectives of our organization.`,
-        40,
-        bodyY,
-        { width: 515, align: 'justify', lineGap: 2 },
-      );
-
-      bodyY += 46;
-      doc.y = bodyY;
-      doc.text(
-        `Under this appointment, your Annual CTC (Cost to Company) will be Rs. ${data.salary.toLocaleString('en-IN')} per annum, subject to statutory deductions as applicable. The detailed breakdown and joining requirements are outlined below.`,
-        40,
-        bodyY,
-        { width: 515, align: 'justify', lineGap: 2 },
-      );
-
-      // ----------------------------------------------------
-      // POSITION DETAILS (TABLE STYLING)
-      // ----------------------------------------------------
-      bodyY += 38;
-      doc.y = bodyY;
-      doc
-        .fillColor('#0f172a')
-        .fontSize(10)
-        .font('Helvetica-Bold')
-        .text('Position Details:', 40, bodyY);
-
-      const tableTop = bodyY + 14;
-      const col1X = 52;
-      const col2X = 230;
-
-      // Row 1
-      doc.rect(40, tableTop, 515, 20).fill('#f1f5f9');
-      doc.y = tableTop + 5;
-      doc
-        .fillColor('#475569')
-        .fontSize(9)
-        .font('Helvetica-Bold')
-        .text('Offered Designation', col1X, tableTop + 5);
-      doc.y = tableTop + 5;
-      doc
-        .fillColor('#0f172a')
-        .font('Helvetica')
-        .text(data.role, col2X, tableTop + 5);
-
-      // Row 2
-      const row2Top = tableTop + 20;
-      doc.rect(40, row2Top, 515, 20).fill('#ffffff');
-      doc.y = row2Top + 5;
-      doc
-        .fillColor('#475569')
-        .font('Helvetica-Bold')
-        .text('Annual CTC (INR)', col1X, row2Top + 5);
-      doc.y = row2Top + 5;
-      doc
-        .fillColor('#0f172a')
-        .font('Helvetica')
-        .text(`Rs. ${data.salary.toLocaleString('en-IN')} / annum`, col2X, row2Top + 5);
-
-      // Row 3
-      const row3Top = row2Top + 20;
-      doc.rect(40, row3Top, 515, 20).fill('#f8fafc');
-      doc.y = row3Top + 5;
-      doc
-        .fillColor('#475569')
-        .font('Helvetica-Bold')
-        .text('Expected Joining Date', col1X, row3Top + 5);
-      const dateVal =
-        typeof data.joiningDate === 'string'
-          ? new Date(data.joiningDate)
-          : data.joiningDate;
-      const formattedJoiningDate = dateVal.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-      doc.y = row3Top + 5;
-      doc
-        .fillColor('#0f172a')
-        .font('Helvetica')
-        .text(formattedJoiningDate, col2X, row3Top + 5);
-
-      // Table border outline
-      doc
-        .rect(40, tableTop, 515, 60)
-        .strokeColor('#e2e8f0')
-        .lineWidth(1)
-        .stroke();
-
-      // ----------------------------------------------------
-      // TERMS & CONDITIONS
-      // ----------------------------------------------------
-      let termsY = row3Top + 26;
-      doc.y = termsY;
-      doc
-        .fillColor('#0f172a')
-        .fontSize(10)
-        .font('Helvetica-Bold')
-        .text('Terms & Conditions:', 40, termsY);
-
-      termsY += 14;
-      doc.fillColor('#475569').fontSize(8.5).font('Helvetica');
-      doc.y = termsY;
-      doc.text(
-        '1. Credential Verification: This offer of employment is contingent upon successful completion of background checks, reference verifications, and submission of academic & professional credentials.',
-        40,
-        termsY,
-        { width: 515, align: 'justify', lineGap: 2 },
-      );
-
-      termsY += 26;
-      doc.y = termsY;
-      doc.text(
-        '2. Probationary Period: Upon commencement, you will undergo a probationary period of six (6) months. Confirmation is subject to satisfactory performance appraisals.',
-        40,
-        termsY,
-        { width: 515, align: 'justify', lineGap: 2 },
-      );
-
-      termsY += 26;
-      doc.y = termsY;
-      doc.text(
-        '3. Acceptance of Offer: Please indicate formal acceptance by signing and returning the duplicate copy of this letter on or before your scheduled joining date.',
-        40,
-        termsY,
-        { width: 515, align: 'justify', lineGap: 2 },
-      );
-
-      // ----------------------------------------------------
-      // SIGNATURE BLOCKS (SIDE-BY-SIDE ON SAME PAGE)
-      // ----------------------------------------------------
-      const sigY = 525;
-      const lineY = sigY + 45;
-
-      // Left Sign: Employer
-      doc.y = sigY;
-      doc
-        .fillColor('#334155')
-        .fontSize(9.5)
-        .font('Helvetica-Bold')
-        .text('Sincerely,', 40, sigY);
-      doc
-        .moveTo(40, lineY)
-        .lineTo(190, lineY)
-        .strokeColor('#cbd5e1')
-        .lineWidth(1)
-        .stroke();
-      doc.y = lineY + 6;
-      doc
-        .fillColor('#475569')
-        .fontSize(8.5)
-        .font('Helvetica-Bold')
-        .text('Authorized Signatory', 40, lineY + 6);
-      doc.y = lineY + 17;
-      doc
-        .font('Helvetica')
-        .fillColor('#64748b')
-        .text('HR Director, Aspino Chemicals Corp', 40, lineY + 17);
-
-      // Right Sign: Candidate Acceptance
-      doc.y = sigY;
-      doc
-        .fillColor('#334155')
-        .fontSize(9.5)
-        .font('Helvetica-Bold')
-        .text('Accepted & Agreed,', 365, sigY);
-      doc
-        .moveTo(365, lineY)
-        .lineTo(515, lineY)
-        .strokeColor('#cbd5e1')
-        .lineWidth(1)
-        .stroke();
-      doc.y = lineY + 6;
-      doc
-        .fillColor('#475569')
-        .fontSize(8.5)
-        .font('Helvetica-Bold')
-        .text('Candidate Signature & Date', 365, lineY + 6);
-      doc.y = lineY + 17;
-      doc
-        .font('Helvetica')
-        .fillColor('#64748b')
-        .text(data.candidateName, 365, lineY + 17);
-
-      // Bottom Footer note
-      doc.y = 750;
-      doc
-        .fillColor('#94a3b8')
-        .fontSize(7.5)
-        .font('Helvetica')
+        .fillColor('#162a55')
+        .fontSize(8.8)
         .text(
-          'Aspino Speciality Chemicals Pvt. Ltd. | Corporate HR Office | Confidential',
-          40,
-          750,
-          { align: 'center', width: 515 },
+          'Kindly bring the following documents on the date of joining:',
+          45,
+          currentY,
         );
 
-      // Outer page border frame
-      doc.rect(20, 20, 555, 755).strokeColor('#cbd5e1').lineWidth(1).stroke();
+      currentY += 13;
+      const checklist = [
+        'Copies of all education certificates for the purpose of admitting the date of birth and all mark sheets of all academic qualifications and achievements.',
+        'Copy Experience Certificates',
+        'Proof of past employments.',
+        'Relieving letter from your current employer',
+        'Photocopy of last salary slip.',
+        'Four copies of passport size photographs',
+        'Photocopy of driving license and your blood group details',
+        'Two References.',
+      ];
 
-      // GUARANTEE: If PDFKit created more than 1 page in buffer, delete extra pages
+      doc.font('Helvetica').fillColor('#334155').fontSize(8.2);
+      for (const item of checklist) {
+        doc.text(`- ${item}`, 45, currentY, {
+          width: 505,
+          align: 'left',
+          lineGap: 1.5,
+        });
+        currentY += doc.heightOfString(`- ${item}`, { width: 505, lineGap: 1.5 }) + 2.5;
+      }
+
+      // ----------------------------------------------------
+      // CLOSING & SIGN OFF
+      // ----------------------------------------------------
+      currentY += 6;
+      doc
+        .fontSize(8.8)
+        .font('Helvetica')
+        .fillColor('#1e293b')
+        .text(
+          'With best wishes for an enjoyable, exciting and prosperous career association with Aspino Specialty Chemicals Private Limited.',
+          45,
+          currentY,
+          { width: 505, align: 'justify', lineGap: 2 },
+        );
+
+      currentY += 20;
+      doc
+        .font('Helvetica-Bold')
+        .fillColor('#162a55')
+        .text('Thankfully yours,', 45, currentY);
+
+      currentY += 12;
+      doc
+        .font('Helvetica-Bold')
+        .fillColor('#162a55')
+        .text('For Aspino Speciality Chemicals Pvt.Ltd.', 45, currentY);
+
+      // ----------------------------------------------------
+      // FOOTER
+      // ----------------------------------------------------
+      doc
+        .fillColor('#1e293b')
+        .fontSize(7.5)
+        .font('Helvetica-Bold')
+        .text(
+          'Registered office  |  SRN-271,BLK-314, Nakoda Road, Ta-Mangrol, Hathuran, Surat, 394125, Gujarat - India.',
+          45,
+          788,
+          { align: 'center', width: 505 },
+        );
+
+      doc.rect(0, 806, 595, 36).fill('#173660');
+      doc
+        .fillColor('#ffffff')
+        .fontSize(8)
+        .font('Helvetica')
+        .text(
+          '+91 98259 57173        info@aspinochemicals.com        www.aspinochemicals.com',
+          0,
+          818,
+          { align: 'center', width: 595 },
+        );
+
+      // Clean up extra pages if any
       const range = doc.bufferedPageRange();
       if (range.count > 1) {
-        // PDFKit internal pages array trim
         const pages = (doc as any)._pages;
         if (Array.isArray(pages) && pages.length > 1) {
           pages.splice(1, pages.length - 1);

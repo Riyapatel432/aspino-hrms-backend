@@ -125,7 +125,12 @@ export class RecruitmentController {
     return this.recruitmentService.deleteTrainingType(id);
   }
 
-  // 1. Requisitions
+  // 1. Requisitions & Replacement Employees
+  @Get('employees')
+  async getEmployeesForReplacement() {
+    return this.recruitmentService.getEmployeesForReplacement();
+  }
+
   @Get('requisitions')
   async getRequisitions(@Query() query: PaginationQueryDto & { status?: string; departmentId?: string }) {
     return this.recruitmentService.getRequisitions(query);

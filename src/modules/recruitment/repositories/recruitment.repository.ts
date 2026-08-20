@@ -175,6 +175,7 @@ export class RecruitmentRepository {
         { title: { contains: query.search, mode: 'insensitive' } },
         { raisedBy: { contains: query.search, mode: 'insensitive' } },
         { department: { name: { contains: query.search, mode: 'insensitive' } } },
+        { jobSpecification: { contains: query.search, mode: 'insensitive' } },
       ];
     }
     if (query.status && query.status !== 'ALL') {
@@ -193,7 +194,34 @@ export class RecruitmentRepository {
 
     const findOptions: Prisma.JobRequisitionFindManyArgs = {
       where,
-      include: { candidates: true, department: true },
+      include: {
+        candidates: true,
+        department: true,
+        replacementForEmployee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            designation: true,
+            dateOfJoining: true,
+            department: { select: { id: true, name: true } },
+            salaryStructures: {
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+              select: { grossSalary: true, basicSalary: true },
+            },
+            exitProcess: {
+              select: {
+                type: true,
+                resignationDate: true,
+                lastWorkingDay: true,
+                reason: true,
+              },
+            },
+          },
+        },
+      },
       orderBy,
     };
     if (isPaginated) {
@@ -211,8 +239,27 @@ export class RecruitmentRepository {
 
   async createRequisition(dto: CreateRequisitionDto) {
     return this.prisma.jobRequisition.create({
-      data: dto,
-      include: { department: true, candidates: true },
+      data: dto as any,
+      include: {
+        department: true,
+        candidates: true,
+        replacementForEmployee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            designation: true,
+            dateOfJoining: true,
+            department: { select: { id: true, name: true } },
+            salaryStructures: {
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+              select: { grossSalary: true, basicSalary: true },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -220,15 +267,56 @@ export class RecruitmentRepository {
     return this.prisma.jobRequisition.update({
       where: { id },
       data: { status: status as JobRequisitionStatus },
-      include: { department: true, candidates: true },
+      include: {
+        department: true,
+        candidates: true,
+        replacementForEmployee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            designation: true,
+            dateOfJoining: true,
+            department: { select: { id: true, name: true } },
+            salaryStructures: {
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+              select: { grossSalary: true, basicSalary: true },
+            },
+          },
+        },
+      },
     });
   }
 
   async updateRequisition(id: string, data: any) {
+    if (data && data.experienceRequired !== undefined && data.experienceRequired !== null) {
+      data.experienceRequired = Number(data.experienceRequired) || 0.0;
+    }
     return this.prisma.jobRequisition.update({
       where: { id },
       data,
-      include: { department: true, candidates: true },
+      include: {
+        department: true,
+        candidates: true,
+        replacementForEmployee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            designation: true,
+            dateOfJoining: true,
+            department: { select: { id: true, name: true } },
+            salaryStructures: {
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+              select: { grossSalary: true, basicSalary: true },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -275,7 +363,24 @@ export class RecruitmentRepository {
 
     const findOptions: Prisma.CandidateFindManyArgs = {
       where,
-      include: { requisition: true, schedules: true, offer: true },
+      include: {
+        requisition: {
+          include: {
+            department: true,
+            replacementForEmployee: {
+              select: {
+                id: true,
+                employeeId: true,
+                firstName: true,
+                lastName: true,
+                designation: true,
+              },
+            },
+          },
+        },
+        schedules: true,
+        offer: true,
+      },
       orderBy,
     };
     if (isPaginated) {
@@ -300,6 +405,7 @@ export class RecruitmentRepository {
         resumeUrl: dto.resumeUrl || '',
         source: dto.source,
         requisitionId: dto.requisitionId,
+        experienceYears: Number(dto.experienceYears) || 0.0,
       },
       include: { requisition: true, schedules: true, offer: true },
     });
@@ -322,6 +428,9 @@ export class RecruitmentRepository {
   async updateCandidate(id: string, data: any) {
     if (data && data.email && typeof data.email === 'string') {
       data.email = data.email.toLowerCase().trim();
+    }
+    if (data && data.experienceYears !== undefined && data.experienceYears !== null) {
+      data.experienceYears = Number(data.experienceYears) || 0.0;
     }
     return this.prisma.candidate.update({
       where: { id },
@@ -519,7 +628,26 @@ export class RecruitmentRepository {
 
     const findOptions: Prisma.OfferLetterFindManyArgs = {
       where,
-      include: { candidate: true },
+      include: {
+        candidate: {
+          include: {
+            requisition: {
+              include: {
+                department: true,
+                replacementForEmployee: {
+                  select: {
+                    id: true,
+                    employeeId: true,
+                    firstName: true,
+                    lastName: true,
+                    designation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy,
     };
     if (isPaginated) {
@@ -538,7 +666,26 @@ export class RecruitmentRepository {
   async findOfferById(id: string) {
     return this.prisma.offerLetter.findUnique({
       where: { id },
-      include: { candidate: true },
+      include: {
+        candidate: {
+          include: {
+            requisition: {
+              include: {
+                department: true,
+                replacementForEmployee: {
+                  select: {
+                    id: true,
+                    employeeId: true,
+                    firstName: true,
+                    lastName: true,
+                    designation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -550,7 +697,26 @@ export class RecruitmentRepository {
         salary: dto.salary,
         joiningDate: new Date(dto.joiningDate),
       },
-      include: { candidate: true },
+      include: {
+        candidate: {
+          include: {
+            requisition: {
+              include: {
+                department: true,
+                replacementForEmployee: {
+                  select: {
+                    id: true,
+                    employeeId: true,
+                    firstName: true,
+                    lastName: true,
+                    designation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -558,7 +724,26 @@ export class RecruitmentRepository {
     return this.prisma.offerLetter.update({
       where: { id },
       data: { status: status as OfferStatus },
-      include: { candidate: true },
+      include: {
+        candidate: {
+          include: {
+            requisition: {
+              include: {
+                department: true,
+                replacementForEmployee: {
+                  select: {
+                    id: true,
+                    employeeId: true,
+                    firstName: true,
+                    lastName: true,
+                    designation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -569,13 +754,139 @@ export class RecruitmentRepository {
     return this.prisma.offerLetter.update({
       where: { id },
       data,
-      include: { candidate: true },
+      include: {
+        candidate: {
+          include: {
+            requisition: {
+              include: {
+                department: true,
+                replacementForEmployee: {
+                  select: {
+                    id: true,
+                    employeeId: true,
+                    firstName: true,
+                    lastName: true,
+                    designation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
   async deleteOffer(id: string) {
     return this.prisma.offerLetter.delete({
       where: { id },
+    });
+  }
+
+  async updateCandidate(id: string, data: any) {
+    if (data && data.email && typeof data.email === 'string') {
+      data.email = data.email.toLowerCase().trim();
+    }
+    if (data && data.experienceYears !== undefined && data.experienceYears !== null) {
+      data.experienceYears = Number(data.experienceYears) || 0.0;
+    }
+    const cand = await this.prisma.candidate.update({
+      where: { id },
+      data,
+    });
+    if (cand.email && data.experienceYears !== undefined) {
+      await this.prisma.employee.updateMany({
+        where: { email: { equals: cand.email, mode: 'insensitive' } },
+        data: { totalExperienceYears: Number(data.experienceYears) || 0.0 },
+      });
+    }
+    return cand;
+  }
+
+  async findEmployeesForDropdown() {
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        OR: [
+          { status: { in: ['EXITING', 'RELIEVED'] } },
+          { exitProcess: { isNot: null } },
+        ],
+      },
+      select: {
+        id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        designation: true,
+        status: true,
+        dateOfJoining: true,
+        totalExperienceYears: true,
+        createdAt: true,
+        departmentId: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        salaryStructures: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            grossSalary: true,
+            basicSalary: true,
+          },
+        },
+        payslips: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            grossEarnings: true,
+            basicSalary: true,
+          },
+        },
+        exitProcess: {
+          select: {
+            type: true,
+            status: true,
+            resignationDate: true,
+            lastWorkingDay: true,
+            reason: true,
+          },
+        },
+      },
+      orderBy: { firstName: 'asc' },
+    });
+
+    const emails = employees.map(e => e.email).filter(Boolean);
+    const candidateData = await this.prisma.candidate.findMany({
+      where: {
+        email: { in: emails, mode: 'insensitive' },
+      },
+      select: {
+        email: true,
+        experienceYears: true,
+        offer: {
+          select: {
+            salary: true,
+          },
+        },
+      },
+    });
+
+    const offerMap = new Map(candidateData.map(c => [c.email.toLowerCase(), c.offer?.salary]));
+    const expMap = new Map(candidateData.map(c => [c.email.toLowerCase(), c.experienceYears]));
+
+    return employees.map(emp => {
+      const emailLower = emp.email?.toLowerCase();
+      const offerSalary = (emailLower && offerMap.get(emailLower)) || 0;
+      const candidateExp = (emailLower && expMap.get(emailLower)) || 0;
+      return {
+        ...emp,
+        totalExperienceYears: emp.totalExperienceYears && emp.totalExperienceYears > 0 ? emp.totalExperienceYears : candidateExp,
+        dateOfJoining: emp.dateOfJoining || emp.createdAt,
+        offerSalary,
+      };
     });
   }
 

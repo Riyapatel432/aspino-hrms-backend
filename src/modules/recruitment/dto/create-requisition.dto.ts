@@ -4,6 +4,7 @@ import {
   IsNumber,
   Min,
   MinLength,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -27,7 +28,24 @@ export class CreateRequisitionDto {
   @MinLength(10, { message: 'Justification must be at least 10 characters.' })
   justification: string;
 
+  @IsString({ message: 'Job specification must be a string.' })
+  @IsNotEmpty({ message: 'Job specification / requirements is required.' })
+  @MinLength(10, { message: 'Job specification must be at least 10 characters.' })
+  jobSpecification: string;
+
   @IsString({ message: 'Raised by must be a string.' })
   @IsNotEmpty({ message: 'The requester name (Raised By) is required.' })
   raisedBy: string;
+
+  @IsOptional()
+  @IsString({ message: 'Requisition type must be a valid string.' })
+  requisitionType?: 'NEW_REQUIREMENT' | 'REPLACEMENT';
+
+  @IsOptional()
+  @IsString({ message: 'Replacement employee ID must be a string.' })
+  replacementForEmployeeId?: string;
+
+  @IsOptional()
+  experienceRequired?: number;
 }
+

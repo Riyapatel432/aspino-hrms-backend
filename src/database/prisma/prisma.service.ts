@@ -127,13 +127,18 @@ export class PrismaService
         `);
         try {
           await this.$executeRawUnsafe(`
-            ALTER TABLE IF EXISTS "InterviewSchedule" ALTER COLUMN "panelists" TYPE text[] USING (
-              CASE 
-                WHEN "panelists" IS NULL THEN '{}'::text[]
-                WHEN "panelists"::text LIKE '[%' THEN string_to_array(replace(replace("panelists"::text, '[', ''), ']', ''), ',')::text[]
-                ELSE ARRAY["panelists"::text]::text[]
-              END
-            );
+            DO $$
+            BEGIN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InterviewSchedule' AND column_name = 'panelists' AND data_type != 'ARRAY') THEN
+                ALTER TABLE "InterviewSchedule" ALTER COLUMN "panelists" TYPE text[] USING (
+                  CASE 
+                    WHEN "panelists" IS NULL THEN '{}'::text[]
+                    WHEN "panelists"::text LIKE '[%' THEN string_to_array(replace(replace("panelists"::text, '[', ''), ']', ''), ',')::text[]
+                    ELSE ARRAY["panelists"::text]::text[]
+                  END
+                );
+              END IF;
+            END $$;
           `);
         } catch (e) {}
         await this.$executeRawUnsafe(`

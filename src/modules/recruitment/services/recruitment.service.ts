@@ -199,9 +199,18 @@ export class RecruitmentService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
+  async getEmployeesForReplacement() {
+    return this.recruitmentRepository.findEmployeesForDropdown();
+  }
+
   async createRequisition(dto: CreateRequisitionDto) {
+    if (dto.requisitionType === 'REPLACEMENT' && !dto.replacementForEmployeeId) {
+      throw new BadRequestException(
+        'Please select the employee who is being replaced for replacement requisitions.',
+      );
+    }
     const req = await this.recruitmentRepository.createRequisition(dto);
-    this.logger.log(`Requisition created: "${dto.title}" (id=${req.id})`);
+    this.logger.log(`Requisition created: "${dto.title}" (id=${req.id}, type=${req.requisitionType})`);
     return req;
   }
 
@@ -215,6 +224,15 @@ export class RecruitmentService {
   }
 
   async updateRequisition(id: string, data: Prisma.JobRequisitionUpdateInput) {
+    if ((data as any).requisitionType === 'REPLACEMENT' && !(data as any).replacementForEmployeeId && !(data as any).replacementForEmployee) {
+      // If updating to REPLACEMENT, require replacement employee
+      const existing = await this.prisma.jobRequisition.findUnique({ where: { id } });
+      if (!existing?.replacementForEmployeeId && !(data as any).replacementForEmployeeId) {
+        throw new BadRequestException(
+          'Please select the employee who is being replaced for replacement requisitions.',
+        );
+      }
+    }
     return this.recruitmentRepository.updateRequisition(id, data);
   }
 
@@ -551,6 +569,7 @@ export class RecruitmentService {
             departmentId: dept.id,
             designation: offer.role,
             dateOfJoining: joiningDate,
+            totalExperienceYears: Number((offer.candidate as any)?.experienceYears) || 0.0,
             status: 'ONBOARDING',
             probationEnd,
             qrToken: randomUUID(),

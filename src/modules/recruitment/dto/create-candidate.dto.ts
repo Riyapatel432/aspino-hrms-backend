@@ -37,4 +37,7 @@ export class CreateCandidateDto {
   @IsString({ message: 'Job Requisition ID must be a string.' })
   @IsNotEmpty({ message: 'A linked Job Requisition must be selected.' })
   requisitionId: string;
+
+  @IsOptional()
+  experienceYears?: number;
 }
