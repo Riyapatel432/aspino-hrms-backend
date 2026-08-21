@@ -14,37 +14,45 @@ export class PayrollService {
   ) {}
 
   async getBanks() {
-    let banks = await this.prisma.bank.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-    });
+    const defaultBanks = [
+      'HDFC Bank',
+      'ICICI Bank',
+      'State Bank of India',
+      'Axis Bank',
+      'Kotak Mahindra Bank',
+      'Punjab National Bank',
+      'Bank of Baroda',
+      'IndusInd Bank',
+      'Canara Bank',
+      'Union Bank of India',
+      'IDFC FIRST Bank',
+      'Yes Bank',
+    ];
 
-    if (!banks || banks.length === 0) {
-      const defaultBanks = [
-        'HDFC Bank',
-        'ICICI Bank',
-        'State Bank of India',
-        'Axis Bank',
-        'Kotak Mahindra Bank',
-        'Punjab National Bank',
-        'Bank of Baroda',
-        'IndusInd Bank',
-        'Canara Bank',
-        'Union Bank of India',
-        'IDFC FIRST Bank',
-        'Yes Bank',
-      ];
-      await this.prisma.bank.createMany({
-        data: defaultBanks.map((name) => ({ name, isActive: true })),
-        skipDuplicates: true,
-      });
-      banks = await this.prisma.bank.findMany({
+    try {
+      let banks = await this.prisma.bank.findMany({
         where: { isActive: true },
         orderBy: { name: 'asc' },
       });
-    }
 
-    return banks;
+      if (!banks || banks.length === 0) {
+        try {
+          await this.prisma.bank.createMany({
+            data: defaultBanks.map((name) => ({ name, isActive: true, updatedAt: new Date() })),
+            skipDuplicates: true,
+          });
+          banks = await this.prisma.bank.findMany({
+            where: { isActive: true },
+            orderBy: { name: 'asc' },
+          });
+        } catch (e) {
+          return defaultBanks.map((name, i) => ({ id: i + 1, name }));
+        }
+      }
+      return banks;
+    } catch (err) {
+      return defaultBanks.map((name, i) => ({ id: i + 1, name }));
+    }
   }
 
   // --- 13.1 Salary Structure Setup ---
@@ -360,9 +368,9 @@ export class PayrollService {
     // 1. Fetch active direct employees
     const employees = await this.repo.getDirectEmployeesForPayroll();
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0); // Last day of month
-    const totalDays = endDate.getDate();
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // Last day of month
+    const totalDays = new Date(year, month, 0).getDate();
 
     let totalGrossAll = 0;
     let totalNetAll = 0;
@@ -411,6 +419,24 @@ export class PayrollService {
       // OT hours calculation
       const otHours = attendances.reduce((acc, curr) => acc + (curr.otHours || 0), 0);
 
+      // Night shift & Holdover duty count
+      const nightShiftCount = attendances.filter(
+        (a) => a.isFullNightPresent || a.shiftName?.toLowerCase().includes('night')
+      ).length;
+
+      // Sunday & Holiday present count
+      const sundayHolidayCount = attendances.filter(
+        (a) => a.isSundayPresent || a.isHolidayPresent
+      ).length;
+
+      // Extra Shift & Overtime Pay Calculation (2.0x Double OT Rate for Pharma continuous & extra shifts)
+      const hourlyRate = (struct.basicSalary + (struct.da || 0)) / (totalDays * 8);
+      const otPay = Math.round(otHours * hourlyRate * 2.0);
+      const nightAllowance = nightShiftCount * 150; // ₹150 per night shift
+      const sundayHolidayAllowance = Math.round(sundayHolidayCount * ((struct.basicSalary / totalDays) * 1.5));
+
+      const extraShiftTotalEarnings = otPay + nightAllowance + sundayHolidayAllowance;
+
       const payableDays = Math.max(0, totalDays - lwpDays);
       const prorationFactor = payableDays / totalDays;
 
@@ -419,7 +445,7 @@ export class PayrollService {
       const hra = Math.round(struct.hraAmount * prorationFactor);
       const da = Math.round(struct.da * prorationFactor);
       const conveyance = Math.round(struct.conveyance * prorationFactor);
-      const special = Math.round(struct.specialAllowance * prorationFactor);
+      const special = Math.round(struct.specialAllowance * prorationFactor) + extraShiftTotalEarnings;
       const bonus = Math.round(struct.statutoryBonus * prorationFactor);
       const reimbursements = Math.round(struct.reimbursements * prorationFactor);
 

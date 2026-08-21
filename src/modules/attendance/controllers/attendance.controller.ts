@@ -9,19 +9,23 @@ import {
   UseGuards,
   Query,
   Res,
+  Req,
 } from '@nestjs/common';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AttendanceService } from '../services/attendance.service';
 import { CreateShiftDto } from '../dto/create-shift.dto';
 import { CreateRosterDto } from '../dto/create-roster.dto';
+import { BulkCreateRosterDto } from '../dto/bulk-roster.dto';
+import { ChangeShiftDto } from '../dto/change-shift.dto';
 import { CaptureAttendanceDto } from '../dto/capture-attendance.dto';
+import { CreateBreakIncidentDto } from '../dto/create-break-incident.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr')
+@Roles('hr', 'hod', 'admin')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) { }
 
@@ -46,13 +50,72 @@ export class AttendanceController {
   }
 
   @Get('rosters')
-  async getRosters(@Query() query: PaginationQueryDto & { employeeId?: string; shiftId?: string }) {
+  async getRosters(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      shiftId?: string;
+      departmentId?: string;
+      startDate?: string;
+      endDate?: string;
+      month?: string;
+      year?: string;
+    },
+  ) {
     return this.attendanceService.getRosters(query);
   }
 
   @Post('rosters')
-  async createRoster(@Body() dto: CreateRosterDto) {
+  async createRoster(@Body() dto: CreateRosterDto, @Req() req: any) {
+    if (!dto.changedByName && req.user?.name) {
+      dto.changedByName = req.user.name;
+    }
+    if (!dto.changedByRole && req.user?.role) {
+      dto.changedByRole = req.user.role.toUpperCase();
+    }
     return this.attendanceService.createRoster(dto);
+  }
+
+  @Post('rosters/bulk')
+  async bulkCreateRosters(@Body() dto: BulkCreateRosterDto, @Req() req: any) {
+    if (!dto.changedByName && req.user?.name) {
+      dto.changedByName = req.user.name;
+    }
+    if (!dto.changedByRole && req.user?.role) {
+      dto.changedByRole = req.user.role.toUpperCase();
+    }
+    return this.attendanceService.bulkCreateRosters(dto);
+  }
+
+  @Post('rosters/:id/change-shift')
+  async changeShift(
+    @Param('id') id: string,
+    @Body() dto: ChangeShiftDto,
+    @Req() req: any,
+  ) {
+    if (!dto.changedById && req.user?.userId) {
+      dto.changedById = req.user.userId;
+    }
+    if (!dto.changedByName && req.user?.name) {
+      dto.changedByName = req.user.name;
+    }
+    if (!dto.changedByRole && req.user?.role) {
+      dto.changedByRole = req.user.role.toUpperCase();
+    }
+    return this.attendanceService.changeShift(id, dto);
+  }
+
+  @Get('rosters/audit-history')
+  async getShiftAuditLogs(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      departmentId?: string;
+      startDate?: string;
+      endDate?: string;
+    },
+  ) {
+    return this.attendanceService.getShiftAuditLogs(query);
   }
 
   @Patch('rosters/:id')
@@ -66,7 +129,7 @@ export class AttendanceController {
   }
 
   @Get('attendance')
-  async getAttendance(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string; month?: string; year?: string }) {
+  async getAttendance(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string; month?: string; year?: string; departmentId?: string }) {
     return this.attendanceService.getAttendance(query);
   }
 
@@ -84,10 +147,11 @@ export class AttendanceController {
   @Get('attendance/template')
   async getAttendanceTemplate(@Res() res: any) {
     const csvContent = [
-      'Employee Code / ID,Date (YYYY-MM-DD),Check In (HH:mm),Check Out (HH:mm),Status (PRESENT/ABSENT/HALFDAY/LATE),OT Hours,Late Hours,Early Going Hours,Present Day',
-      'ASP-2026-0001,2026-08-01,09:00,17:30,PRESENT,0,0,0,1.0',
-      'ASP-2026-0002,2026-08-01,09:15,17:30,LATE,0,0.25,0,1.0',
-      'ASP-2026-0003,2026-08-01,09:00,13:00,HALFDAY,0,0,0,0.5',
+      'Employee Code / ID,Date (YYYY-MM-DD),Shift Name (Morning/Evening/Night/General),Check In (HH:mm),Check Out (HH:mm),Status (PRESENT/ABSENT/HALFDAY/LATE),OT Hours,Late Hours,Early Going Hours,Present Day',
+      'aspino_2026_001,2026-08-01,Morning Shift,08:00,16:30,PRESENT,0,0,0,1.0',
+      'aspino_2026_002,2026-08-01,Morning Shift,08:15,16:30,LATE,0,0.25,0,1.0',
+      'aspino_2026_003,2026-08-01,Evening Shift,14:00,22:30,PRESENT,0,0,0,1.0',
+      'aspino_2026_004,2026-08-01,General Shift,09:00,17:30,PRESENT,0,0,0,1.0',
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
@@ -104,4 +168,21 @@ export class AttendanceController {
   async deleteAttendance(@Param('id') id: string) {
     return this.attendanceService.deleteAttendance(id);
   }
+
+  // --- Break Misuse Incident Endpoints (Subjective HOD Complaints) ---
+  @Get('break-incidents')
+  async getBreakIncidents(@Query() query: PaginationQueryDto & { employeeId?: string; departmentId?: string; date?: string }) {
+    return this.attendanceService.getBreakIncidents(query);
+  }
+
+  @Post('break-incidents')
+  async createBreakIncident(@Body() dto: CreateBreakIncidentDto) {
+    return this.attendanceService.createBreakIncident(dto);
+  }
+
+  @Delete('break-incidents/:id')
+  async deleteBreakIncident(@Param('id') id: string) {
+    return this.attendanceService.deleteBreakIncident(id);
+  }
 }
+

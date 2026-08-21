@@ -238,8 +238,12 @@ export class RecruitmentRepository {
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
+    const payload: any = { ...dto };
+    if (payload.cnvNotificationDate) {
+      payload.cnvNotificationDate = new Date(payload.cnvNotificationDate);
+    }
     return this.prisma.jobRequisition.create({
-      data: dto as any,
+      data: payload,
       include: {
         department: true,
         candidates: true,
@@ -291,12 +295,16 @@ export class RecruitmentRepository {
   }
 
   async updateRequisition(id: string, data: any) {
-    if (data && data.experienceRequired !== undefined && data.experienceRequired !== null) {
-      data.experienceRequired = Number(data.experienceRequired) || 0.0;
+    const payload: any = { ...data };
+    if (payload && payload.experienceRequired !== undefined && payload.experienceRequired !== null) {
+      payload.experienceRequired = Number(payload.experienceRequired) || 0.0;
+    }
+    if (payload.cnvNotificationDate) {
+      payload.cnvNotificationDate = new Date(payload.cnvNotificationDate);
     }
     return this.prisma.jobRequisition.update({
       where: { id },
-      data,
+      data: payload,
       include: {
         department: true,
         candidates: true,
@@ -422,19 +430,6 @@ export class RecruitmentRepository {
     return this.prisma.candidate.update({
       where: { id },
       data: updateData,
-    });
-  }
-
-  async updateCandidate(id: string, data: any) {
-    if (data && data.email && typeof data.email === 'string') {
-      data.email = data.email.toLowerCase().trim();
-    }
-    if (data && data.experienceYears !== undefined && data.experienceYears !== null) {
-      data.experienceYears = Number(data.experienceYears) || 0.0;
-    }
-    return this.prisma.candidate.update({
-      where: { id },
-      data,
     });
   }
 

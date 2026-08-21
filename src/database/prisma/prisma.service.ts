@@ -142,6 +142,14 @@ export class PrismaService
           `);
         } catch (e) {}
         await this.$executeRawUnsafe(`
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "isCnvApplicable" BOOLEAN DEFAULT false;
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvNotificationDate" TIMESTAMP(3);
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvExchangeOffice" TEXT;
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvRefNumber" TEXT;
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvStatus" TEXT DEFAULT 'NOT_REQUIRED';
+          ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvExemptionReason" TEXT;
+          ALTER TABLE IF EXISTS "ShiftRoster" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;
+          ALTER TABLE IF EXISTS "ShiftRoster" ADD COLUMN IF NOT EXISTS "managedByHod" TEXT;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "otHours" DOUBLE PRECISION DEFAULT 0;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "lateHours" DOUBLE PRECISION DEFAULT 0;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "earlyGoingHours" DOUBLE PRECISION DEFAULT 0;
@@ -151,6 +159,28 @@ export class PrismaService
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "isFullNightPresent" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "isHolidayPresent" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "captureMethod" TEXT DEFAULT 'BIOMETRIC';
+          ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "breakMisuseMinutes" INTEGER DEFAULT 0;
+          ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "breakDeductionHours" DOUBLE PRECISION DEFAULT 0.0;
+          ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "hasBreakComplaint" BOOLEAN DEFAULT false;
+
+          CREATE TABLE IF NOT EXISTS "BreakMisuseIncident" (
+            "id" TEXT NOT NULL,
+            "attendanceId" TEXT,
+            "employeeId" TEXT NOT NULL,
+            "reportedByHodId" TEXT,
+            "reportedByName" TEXT NOT NULL DEFAULT 'HOD',
+            "incidentDate" TIMESTAMP(3) NOT NULL,
+            "breakType" TEXT NOT NULL DEFAULT 'GENERAL_BREAK',
+            "excessMinutes" INTEGER NOT NULL DEFAULT 0,
+            "deductionHours" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+            "severity" TEXT NOT NULL DEFAULT 'WARNING',
+            "complaintDetails" TEXT NOT NULL DEFAULT '',
+            "status" TEXT NOT NULL DEFAULT 'REPORTED',
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "BreakMisuseIncident_pkey" PRIMARY KEY ("id")
+          );
+          ALTER TABLE IF EXISTS "BreakMisuseIncident" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
         `);
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "FiscalYear" (

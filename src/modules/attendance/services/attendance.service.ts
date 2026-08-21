@@ -8,12 +8,21 @@ export interface UpdateShiftDto {
   name?: string;
   startTime?: string;
   endTime?: string;
+  graceTimeMinutes?: number;
+  breakDurationMinutes?: number;
+  breakRules?: string;
+  isNightShift?: boolean;
+  color?: string;
+  description?: string;
 }
 
 export interface UpdateRosterDto {
   employeeId?: string;
   shiftId?: string;
   date?: string;
+  departmentId?: string;
+  managedByHod?: string;
+  reason?: string;
 }
 
 export interface UpdateAttendanceDto {
@@ -40,14 +49,24 @@ export class AttendanceService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
-  async createShift(dto: { name: string; startTime: string; endTime: string }) {
+  async createShift(dto: {
+    name: string;
+    startTime: string;
+    endTime: string;
+    graceTimeMinutes?: number;
+    breakDurationMinutes?: number;
+    breakRules?: string;
+    isNightShift?: boolean;
+    color?: string;
+    description?: string;
+  }) {
     const existing = await this.prisma.shift.findFirst({
       where: { name: { equals: dto.name, mode: 'insensitive' } },
     });
     if (existing) {
       throw new ConflictException('A shift with this name already exists.');
     }
-    return this.attendanceRepository.createShift(dto);
+    return this.attendanceRepository.createShift(dto as any);
   }
 
   async updateShift(id: string, dto: UpdateShiftDto) {
@@ -69,7 +88,17 @@ export class AttendanceService {
     return this.attendanceRepository.deleteShift(id);
   }
 
-  async getRosters(query: PaginationQueryDto & { employeeId?: string; shiftId?: string } = {}) {
+  async getRosters(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      shiftId?: string;
+      departmentId?: string;
+      startDate?: string;
+      endDate?: string;
+      month?: string | number;
+      year?: string | number;
+    } = {},
+  ) {
     const res = await this.attendanceRepository.findManyRosters(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -78,47 +107,56 @@ export class AttendanceService {
     employeeId: string;
     shiftId: string;
     date: string;
+    departmentId?: string;
+    managedByHod?: string;
+    reason?: string;
+    changedByName?: string;
+    changedByRole?: string;
   }) {
-    const targetDate = new Date(dto.date);
-    const existing = await this.prisma.shiftRoster.findFirst({
-      where: {
-        employeeId: dto.employeeId,
-        date: targetDate,
-      },
-    });
-    if (existing) {
-      throw new ConflictException(
-        'A shift roster already exists for this employee on this date.',
-      );
-    }
     return this.attendanceRepository.createRoster(dto);
   }
 
+  async bulkCreateRosters(dto: {
+    departmentId?: string;
+    employeeIds: string[];
+    shiftId: string;
+    startDate: string;
+    endDate: string;
+    daysOfWeek?: number[];
+    reason?: string;
+    managedByHod?: string;
+    changedByName?: string;
+    changedByRole?: string;
+  }) {
+    return this.attendanceRepository.bulkCreateRosters(dto);
+  }
+
+  async changeShift(
+    rosterId: string,
+    dto: {
+      newShiftId: string;
+      reason?: string;
+      changedById?: string;
+      changedByName?: string;
+      changedByRole?: string;
+    },
+  ) {
+    return this.attendanceRepository.changeShift(rosterId, dto);
+  }
+
+  async getShiftAuditLogs(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      departmentId?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
+  ) {
+    const res = await this.attendanceRepository.findManyShiftAuditLogs(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
+  }
+
   async updateRoster(id: string, dto: UpdateRosterDto) {
-    if (dto.employeeId || dto.date) {
-      const current = await this.prisma.shiftRoster.findUnique({
-        where: { id },
-      });
-
-      const empIdStr = dto.employeeId ?? current?.employeeId;
-      const dateStr = dto.date ?? current?.date;
-      const targetDate = dateStr ? new Date(dateStr) : undefined;
-
-      if (empIdStr && targetDate) {
-        const existing = await this.prisma.shiftRoster.findFirst({
-          where: {
-            employeeId: empIdStr,
-            date: targetDate,
-            id: { not: id },
-          },
-        });
-        if (existing) {
-          throw new ConflictException(
-            'A shift roster already exists for this employee on this date.',
-          );
-        }
-      }
-    }
     return this.attendanceRepository.updateRoster(id, dto);
   }
 
@@ -163,5 +201,19 @@ export class AttendanceService {
 
   async deleteAttendance(id: string) {
     return this.attendanceRepository.deleteAttendance(id);
+  }
+
+  // --- Break Misuse Incidents ---
+  async getBreakIncidents(query: PaginationQueryDto & { employeeId?: string; departmentId?: string; date?: string } = {}) {
+    const res = await this.attendanceRepository.findManyBreakIncidents(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
+  }
+
+  async createBreakIncident(dto: any) {
+    return this.attendanceRepository.createBreakIncident(dto);
+  }
+
+  async deleteBreakIncident(id: string) {
+    return this.attendanceRepository.deleteBreakIncident(id);
   }
 }

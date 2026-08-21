@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
 
 export class CreateRosterDto {
   @IsString({ message: 'Employee ID must be a string.' })
@@ -12,4 +12,24 @@ export class CreateRosterDto {
   @IsDateString({}, { message: 'Date must be a valid date (YYYY-MM-DD).' })
   @IsNotEmpty({ message: 'Roster date is required.' })
   date: string;
+
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  managedByHod?: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  changedByName?: string;
+
+  @IsOptional()
+  @IsString()
+  changedByRole?: string;
 }

@@ -47,5 +47,28 @@ export class CreateRequisitionDto {
 
   @IsOptional()
   experienceRequired?: number;
+
+  @IsOptional()
+  isCnvApplicable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  cnvNotificationDate?: string;
+
+  @IsOptional()
+  @IsString()
+  cnvExchangeOffice?: string;
+
+  @IsOptional()
+  @IsString()
+  cnvRefNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  cnvStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  cnvExemptionReason?: string;
 }
 

@@ -62,6 +62,8 @@ model Employee {
   loans            EmployeeLoan[]
   payslips         Payslip[]
   replacedRequisitions JobRequisition[] @relation("RequisitionReplacementEmployee")
+  breakIncidents   BreakMisuseIncident[]
+  shiftAuditLogs   ShiftAuditLog[]
 }
 
 model Department {
@@ -73,6 +75,7 @@ model Department {
   employees      Employee[]
   clearanceTasks ClearanceTask[]
   leaveMasters   DepartmentLeaveMaster[]
+  shiftRosters   ShiftRoster[]
 }
 
 model TrainingType {
@@ -97,6 +100,12 @@ model JobRequisition {
   replacementForEmployee   Employee?            @relation("RequisitionReplacementEmployee", fields: [replacementForEmployeeId], references: [id])
   status                   JobRequisitionStatus @default(PENDING)
   raisedBy                 String
+  isCnvApplicable          Boolean              @default(false)
+  cnvNotificationDate      DateTime?
+  cnvExchangeOffice        String?
+  cnvRefNumber             String?
+  cnvStatus                String?              @default("NOT_REQUIRED")
+  cnvExemptionReason       String?
   createdAt                DateTime             @default(now())
   candidates               Candidate[]
 }
@@ -189,44 +198,95 @@ model SystemAccess {
 }
 
 model Shift {
-  id          String        @id @default(uuid())
-  name        String        // Morning, Evening, Night, Flexible
-  startTime   String        // HH:MM
-  endTime     String
-  rosters     ShiftRoster[]
-  attendances Attendance[]
+  id                   String        @id @default(uuid())
+  name                 String        // Morning, Evening, Night, Flexible
+  startTime            String        // HH:MM
+  endTime              String
+  graceTimeMinutes     Int?          @default(15)
+  breakDurationMinutes Int?          @default(60)
+  breakRules           String?       // e.g. 45 min Lunch + 15 min Tea Break
+  isNightShift         Boolean       @default(false)
+  color                String?       @default("#0284c7")
+  description          String?
+  rosters              ShiftRoster[]
+  attendances          Attendance[]
 }
 
 model ShiftRoster {
-  id         String   @id @default(uuid())
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  shiftId    String
-  shift      Shift    @relation(fields: [shiftId], references: [id])
-  date       DateTime
+  id           String          @id @default(uuid())
+  employeeId   String
+  employee     Employee        @relation(fields: [employeeId], references: [id])
+  shiftId      String
+  shift        Shift           @relation(fields: [shiftId], references: [id])
+  departmentId String?
+  department   Department?     @relation(fields: [departmentId], references: [id])
+  managedByHod String?
+  date         DateTime
+  reason       String?
+  auditLogs    ShiftAuditLog[]
+}
+
+model ShiftAuditLog {
+  id            String       @id @default(uuid())
+  rosterId      String?
+  roster        ShiftRoster? @relation(fields: [rosterId], references: [id], onDelete: SetNull)
+  employeeId    String
+  employee      Employee     @relation(fields: [employeeId], references: [id])
+  oldShiftId    String?
+  oldShiftName  String?
+  newShiftId    String
+  newShiftName  String
+  rosterDate    DateTime
+  changedById   String?
+  changedByName String
+  changedByRole String       @default("HOD")
+  reason        String?
+  createdAt     DateTime     @default(now())
 }
 
 model Attendance {
-  id                 String    @id @default(uuid())
-  employeeId         String
-  employee           Employee  @relation(fields: [employeeId], references: [id])
-  date               DateTime
-  checkIn            DateTime?
-  checkOut           DateTime?
-  status             AttendanceStatus @default(PRESENT)
-  shiftId            String?
-  shift              Shift?    @relation(fields: [shiftId], references: [id])
-  shiftName          String?
-  totalWorkHours     Float?
-  otHours            Float?    @default(0)
-  lateHours          Float?    @default(0)
-  earlyGoingHours    Float?    @default(0)
-  presentDay         Float?    @default(1.0)
-  isHalfDay          Boolean?  @default(false)
-  isSundayPresent    Boolean?  @default(false)
-  isFullNightPresent Boolean?  @default(false)
-  isHolidayPresent   Boolean?  @default(false)
-  captureMethod      String?   @default("BIOMETRIC")
+  id                  String                @id @default(uuid())
+  employeeId          String
+  employee            Employee              @relation(fields: [employeeId], references: [id])
+  date                DateTime
+  checkIn             DateTime?
+  checkOut            DateTime?
+  status              AttendanceStatus      @default(PRESENT)
+  shiftId             String?
+  shift               Shift?                @relation(fields: [shiftId], references: [id])
+  shiftName           String?
+  totalWorkHours      Float?
+  otHours             Float?                @default(0)
+  lateHours           Float?                @default(0)
+  earlyGoingHours     Float?                @default(0)
+  presentDay          Float?                @default(1.0)
+  isHalfDay           Boolean?              @default(false)
+  isSundayPresent     Boolean?              @default(false)
+  isFullNightPresent  Boolean?              @default(false)
+  isHolidayPresent    Boolean?              @default(false)
+  captureMethod       String?               @default("BIOMETRIC")
+  breakMisuseMinutes  Int?                  @default(0)
+  breakDeductionHours Float?                @default(0.0)
+  hasBreakComplaint   Boolean?              @default(false)
+  breakIncidents      BreakMisuseIncident[]
+}
+
+model BreakMisuseIncident {
+  id               String       @id @default(uuid())
+  attendanceId     String?
+  attendance       Attendance?  @relation(fields: [attendanceId], references: [id])
+  employeeId       String
+  employee         Employee     @relation(fields: [employeeId], references: [id])
+  reportedByHodId  String?
+  reportedByName   String
+  incidentDate     DateTime
+  breakType        String       // LUNCH_BREAK, TEA_BREAK, GENERAL_BREAK, SMOKING_BREAK
+  excessMinutes    Int          @default(0)
+  deductionHours   Float        @default(0.0)
+  severity         String       @default("WARNING") // WARNING, HALF_DAY_DEDUCTION, SALARY_DEDUCTION, VERBAL_ALERT
+  complaintDetails String
+  status           String       @default("REPORTED") // REPORTED, APPROVED, WAIVED
+  createdAt        DateTime     @default(now())
 }
 
 model LeaveBalance {

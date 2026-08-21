@@ -110,7 +110,7 @@ export class PayrollController {
     return this.payrollService.submitRentReceipt(dto);
   }
 
-  @Get('hra/rent-receipt')
+  @Get(['hra/rent-receipt', 'hra/rent-receipts'])
   async getRentReceipts(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -143,7 +143,7 @@ export class PayrollController {
     return this.payrollService.submitTaxDeclaration(dto);
   }
 
-  @Get('tax-declaration')
+  @Get(['tax-declaration', 'tax-declarations', 'hra/tax-declarations'])
   async getTaxDeclarations(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -170,7 +170,7 @@ export class PayrollController {
     return this.payrollService.createLoan(dto);
   }
 
-  @Get('loan')
+  @Get(['loan', 'loans'])
   async getActiveLoans(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
