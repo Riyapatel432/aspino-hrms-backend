@@ -7,9 +7,13 @@ export function createPaginatedResponse<T>(
   limit?: number,
   message: string = 'Data fetched successfully.',
 ): PaginatedResult<T> {
-  const isPaginated = page !== undefined && limit !== undefined && page !== null && limit !== null;
+  const isPaginated =
+    page !== undefined &&
+    limit !== undefined &&
+    page !== null &&
+    limit !== null;
   const pageNum = Number(page) > 0 ? Number(page) : 1;
-  const limitNum = Number(limit) > 0 ? Number(limit) : (total || 1);
+  const limitNum = Number(limit) > 0 ? Number(limit) : total || 1;
   const totalPages = Math.max(1, Math.ceil(total / limitNum));
 
   return {

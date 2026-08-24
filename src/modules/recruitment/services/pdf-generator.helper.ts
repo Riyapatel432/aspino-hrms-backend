@@ -95,7 +95,10 @@ export function generateOfferLetterPdf(
       // ----------------------------------------------------
       const logoPaths = [
         path.resolve(process.cwd(), 'uploads/aspino-logo.png'),
-        path.resolve(process.cwd(), '../nextjs-aspino-hrms/public/aspino-logo.png'),
+        path.resolve(
+          process.cwd(),
+          '../nextjs-aspino-hrms/public/aspino-logo.png',
+        ),
       ];
       let foundLogo = '';
       for (const p of logoPaths) {
@@ -246,7 +249,8 @@ export function generateOfferLetterPdf(
           align: 'left',
           lineGap: 1.5,
         });
-        currentY += doc.heightOfString(`- ${item}`, { width: 505, lineGap: 1.5 }) + 2.5;
+        currentY +=
+          doc.heightOfString(`- ${item}`, { width: 505, lineGap: 1.5 }) + 2.5;
       }
 
       // ----------------------------------------------------
@@ -310,6 +314,382 @@ export function generateOfferLetterPdf(
           pages.splice(1, pages.length - 1);
         }
       }
+
+      doc.end();
+
+      writeStream.on('finish', () => {
+        resolve();
+      });
+      writeStream.on('error', (err) => {
+        reject(err);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+export interface CnvPdfData {
+  requisitionId: string;
+  title: string;
+  departmentName: string;
+  headcount: number;
+  experienceRequired?: string | number | null;
+  requisitionType: string;
+  jobSpecification?: string | null;
+  exchangeOffice?: string | null;
+  refNumber?: string | null;
+}
+
+export function generateCnvNotificationPdf(
+  filePath: string,
+  data: CnvPdfData,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 0,
+      });
+
+      doc.addPage = function () {
+        return this;
+      };
+
+      const writeStream = fs.createWriteStream(filePath);
+      doc.pipe(writeStream);
+
+      const now = new Date();
+      const dateFormatted = formatLetterDate(now);
+      const year = now.getFullYear();
+      const refNo =
+        data.refNumber ||
+        `REF/CNV/${year}/${String(data.requisitionId || '1')
+          .slice(-4)
+          .padStart(4, '0')}`;
+      const exchangeOffice =
+        data.exchangeOffice || 'District Employment Exchange Office';
+
+      // ----------------------------------------------------
+      // TOP HEADER BANNER (Full Width 595.28 pt)
+      // ----------------------------------------------------
+      doc.rect(0, 0, 595.28, 85).fill('#0f3d70');
+      doc.rect(0, 83, 595.28, 3.5).fill('#f59e0b');
+
+      // Company Title & Info
+      doc
+        .fillColor('#ffffff')
+        .fontSize(16)
+        .font('Helvetica-Bold')
+        .text('ASPINO SPECIALTY CHEMICALS PVT. LTD.', 36, 18);
+
+      doc
+        .fillColor('#cbd5e1')
+        .fontSize(8)
+        .font('Helvetica')
+        .text(
+          'CIN: U20297GJ2024PTC150782  |  SRN-271, BLK-314, Nakoda Road, Ta-Mangrol, Surat - 394125',
+          36,
+          40,
+        );
+
+      doc
+        .fillColor('#f59e0b')
+        .fontSize(8.5)
+        .font('Helvetica-Bold')
+        .text('HUMAN RESOURCES COMPLIANCE CELL', 36, 56);
+
+      // Top Right Contact
+      doc
+        .fillColor('#e2e8f0')
+        .fontSize(8)
+        .font('Helvetica')
+        .text('info@aspinochemicals.com', 380, 22, {
+          width: 180,
+          align: 'right',
+        })
+        .text('+91 98259 57173', 380, 36, { width: 180, align: 'right' })
+        .text('Official Form (CNV-1959)', 380, 50, {
+          width: 180,
+          align: 'right',
+        });
+
+      // ----------------------------------------------------
+      // REFERENCE & DATE BAR
+      // ----------------------------------------------------
+      let currentY = 100;
+      doc
+        .fillColor('#334155')
+        .fontSize(9.5)
+        .font('Helvetica-Bold')
+        .text(`Ref. No.: ${refNo}`, 36, currentY)
+        .text(`Date: ${dateFormatted}`, 36, currentY, {
+          width: 523.28,
+          align: 'right',
+        });
+
+      currentY += 16;
+      doc
+        .strokeColor('#cbd5e1')
+        .lineWidth(0.8)
+        .dash(3, { space: 2 })
+        .moveTo(36, currentY)
+        .lineTo(559.28, currentY)
+        .stroke();
+      doc.undash();
+
+      // ----------------------------------------------------
+      // TO ADDRESS
+      // ----------------------------------------------------
+      currentY += 12;
+      doc
+        .fillColor('#0f172a')
+        .fontSize(9.5)
+        .font('Helvetica-Bold')
+        .text('To,', 36, currentY);
+
+      currentY += 12;
+      doc
+        .font('Helvetica')
+        .fontSize(9.5)
+        .text(
+          'The Employment Officer / Designated Competent Authority,',
+          36,
+          currentY,
+        );
+
+      currentY += 12;
+      doc.font('Helvetica-Bold').text(exchangeOffice, 36, currentY);
+
+      // ----------------------------------------------------
+      // SUBJECT BADGE
+      // ----------------------------------------------------
+      currentY += 18;
+      doc.rect(36, currentY, 523.28, 26).fillAndStroke('#eff6ff', '#bfdbfe');
+
+      doc
+        .fillColor('#0f3d70')
+        .fontSize(11)
+        .font('Helvetica-Bold')
+        .text(
+          'STATUTORY NOTIFICATION OF VACANCY (CNV ACT, 1959)',
+          36,
+          currentY + 7,
+          { width: 523.28, align: 'center' },
+        );
+
+      // ----------------------------------------------------
+      // STATUTORY CLAUSE BOX
+      // ----------------------------------------------------
+      currentY += 34;
+      doc.rect(36, currentY, 523.28, 38).fill('#f8fafc');
+      doc.rect(36, currentY, 4, 38).fill('#0f3d70');
+
+      doc
+        .fillColor('#334155')
+        .fontSize(8.5)
+        .font('Helvetica')
+        .text(
+          'This official notification is submitted in strict compliance with Section 4 of the Employment Exchanges (Compulsory Notification of Vacancies) Act, 1959 and applicable state rules. The particulars of the open vacancy / requirement are furnished below for registration and sponsor action.',
+          48,
+          currentY + 6,
+          { width: 500, align: 'justify', lineGap: 2 },
+        );
+
+      // ----------------------------------------------------
+      // TABLE GRID
+      // ----------------------------------------------------
+      currentY += 46;
+      const tableX = 36;
+      const tableWidth = 523.28;
+      const col1Width = 190;
+      const col2Width = tableWidth - col1Width;
+      const rowHeight = 22;
+
+      // Table Header
+      doc.rect(tableX, currentY, tableWidth, rowHeight).fill('#0f3d70');
+      doc
+        .fillColor('#ffffff')
+        .fontSize(9)
+        .font('Helvetica-Bold')
+        .text('COMPLIANCE PARTICULARS', tableX + 12, currentY + 6)
+        .text('DETAILS / SPECIFICATION', tableX + col1Width + 12, currentY + 6);
+
+      currentY += rowHeight;
+
+      const rows: [string, string][] = [
+        ['Employer / Organization', 'Aspino Specialty Chemicals Pvt. Ltd.'],
+        ['Vacancy / Job Title', data.title || '—'],
+        ['Department / Unit', data.departmentName || 'General Operations'],
+        [
+          'Number of Open Vacancies (Headcount)',
+          `${data.headcount || 1} Position(s)`,
+        ],
+        [
+          'Experience Required',
+          data.experienceRequired
+            ? `${data.experienceRequired} Year(s)`
+            : 'Freshers / Entry level eligible',
+        ],
+        ['Nature of Employment', 'Full-Time / Regular & Permanent'],
+        [
+          'Vacancy Type',
+          data.requisitionType === 'REPLACEMENT'
+            ? 'Replacement Requirement'
+            : 'New Requirement / Expansion',
+        ],
+        [
+          'Job Specification / Brief',
+          data.jobSpecification ||
+            'As per standardized corporate job description',
+        ],
+        ['Statutory Ref. Number', refNo],
+        ['Notification Date', dateFormatted],
+      ];
+
+      rows.forEach(([label, val], idx) => {
+        const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+        doc.rect(tableX, currentY, tableWidth, rowHeight).fill(bg);
+        doc
+          .rect(tableX, currentY, tableWidth, rowHeight)
+          .strokeColor('#cbd5e1')
+          .lineWidth(0.5)
+          .stroke();
+        doc
+          .rect(tableX, currentY, col1Width, rowHeight)
+          .fillAndStroke(idx % 2 === 0 ? '#f1f5f9' : '#e2e8f0', '#cbd5e1');
+
+        doc
+          .fillColor('#334155')
+          .fontSize(8.5)
+          .font('Helvetica-Bold')
+          .text(label, tableX + 10, currentY + 6, { width: col1Width - 16 });
+
+        doc
+          .fillColor(label === 'Vacancy / Job Title' ? '#0f3d70' : '#0f172a')
+          .fontSize(8.5)
+          .font(
+            label === 'Vacancy / Job Title' ? 'Helvetica-Bold' : 'Helvetica',
+          )
+          .text(val, tableX + col1Width + 10, currentY + 6, {
+            width: col2Width - 16,
+          });
+
+        currentY += rowHeight;
+      });
+
+      // ----------------------------------------------------
+      // CLOSING TEXT
+      // ----------------------------------------------------
+      currentY += 10;
+      doc
+        .fillColor('#334155')
+        .fontSize(8)
+        .font('Helvetica')
+        .text(
+          'We request your esteemed office to kindly record this notification and refer suitable candidate profiles as per standard procedure. Aspino Specialty Chemicals Pvt. Ltd. maintains equal employment opportunities across all categories including persons with benchmark disabilities.',
+          36,
+          currentY,
+          { width: 523.28, align: 'justify', lineGap: 1.5 },
+        );
+
+      // ----------------------------------------------------
+      // SIGNATURE & SEAL BOXES
+      // ----------------------------------------------------
+      currentY += 30;
+
+      // Employer Signatory (Left)
+      doc
+        .strokeColor('#64748b')
+        .lineWidth(1)
+        .moveTo(36, currentY + 40)
+        .lineTo(190, currentY + 40)
+        .stroke();
+
+      doc
+        .fillColor('#0f3d70')
+        .fontSize(9.5)
+        .font('Helvetica-Bold')
+        .text('Authorized Signatory', 36, currentY + 46);
+
+      doc
+        .fillColor('#64748b')
+        .fontSize(7.5)
+        .font('Helvetica')
+        .text('Aspino Specialty Chemicals Pvt. Ltd.', 36, currentY + 58);
+
+      // Middle Company Seal Box
+      doc
+        .strokeColor('#94a3b8')
+        .lineWidth(1)
+        .dash(3, { space: 2 })
+        .rect(245, currentY, 105, 60)
+        .stroke();
+      doc.undash();
+
+      doc
+        .fillColor('#94a3b8')
+        .fontSize(8)
+        .font('Helvetica-Bold')
+        .text('OFFICIAL\nCOMPANY SEAL', 245, currentY + 20, {
+          width: 105,
+          align: 'center',
+        });
+
+      // Right Receiving Officer Receipt Box
+      doc
+        .strokeColor('#64748b')
+        .lineWidth(1)
+        .moveTo(405, currentY + 40)
+        .lineTo(559.28, currentY + 40)
+        .stroke();
+
+      doc
+        .fillColor('#0f3d70')
+        .fontSize(9.5)
+        .font('Helvetica-Bold')
+        .text('Employment Exchange Receipt', 405, currentY + 46, {
+          width: 154.28,
+          align: 'right',
+        });
+
+      doc
+        .fillColor('#64748b')
+        .fontSize(7.5)
+        .font('Helvetica')
+        .text('Receiving Officer Signature & Seal', 405, currentY + 58, {
+          width: 154.28,
+          align: 'right',
+        });
+
+      // ----------------------------------------------------
+      // FOOTER BANNER
+      // ----------------------------------------------------
+      doc.rect(0, 808, 595.28, 33.89).fill('#0f3d70');
+      doc.rect(0, 806, 595.28, 2).fill('#f59e0b');
+
+      doc
+        .fillColor('#ffffff')
+        .fontSize(7.5)
+        .font('Helvetica')
+        .text(
+          `Ref: ${refNo}   |   Statutory CNV Notification Form   |   Generated: ${dateFormatted}`,
+          36,
+          818,
+          { width: 300, align: 'left' },
+        );
+
+      doc
+        .fillColor('#cbd5e1')
+        .fontSize(7.5)
+        .font('Helvetica')
+        .text('System Generated Record  |  Aspino HRMS Portal', 300, 818, {
+          width: 259.28,
+          align: 'right',
+        });
 
       doc.end();
 

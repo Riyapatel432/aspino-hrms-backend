@@ -5,7 +5,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 @Injectable()
 export class UserRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findByEmail(email: string): Promise<User | null> {
     const cleanEmail = email ? email.toLowerCase().trim() : '';

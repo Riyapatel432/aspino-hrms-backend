@@ -22,10 +22,12 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class PerformanceController {
-  constructor(private readonly performanceService: PerformanceService) { }
+  constructor(private readonly performanceService: PerformanceService) {}
 
   @Get('appraisal-cycles')
-  async getAppraisalCycles(@Query() query: PaginationQueryDto & { status?: string }) {
+  async getAppraisalCycles(
+    @Query() query: PaginationQueryDto & { status?: string },
+  ) {
     return this.performanceService.getAppraisalCycles(query);
   }
 
@@ -45,7 +47,14 @@ export class PerformanceController {
   }
 
   @Get('goals')
-  async getGoals(@Query() query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string }) {
+  async getGoals(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    },
+  ) {
     return this.performanceService.getGoals(query);
   }
 
@@ -65,7 +74,14 @@ export class PerformanceController {
   }
 
   @Get('reviews')
-  async getReviews(@Query() query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string }) {
+  async getReviews(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    },
+  ) {
     return this.performanceService.getReviews(query);
   }
 

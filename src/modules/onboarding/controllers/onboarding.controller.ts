@@ -41,10 +41,13 @@ export class UpdateSystemAccessDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class OnboardingController {
-  constructor(private readonly onboardingService: OnboardingService) { }
+  constructor(private readonly onboardingService: OnboardingService) {}
 
   @Get('employees')
-  async getEmployees(@Query() query: PaginationQueryDto & { status?: string; department?: string }) {
+  async getEmployees(
+    @Query()
+    query: PaginationQueryDto & { status?: string; department?: string },
+  ) {
     return this.onboardingService.getEmployees(query);
   }
 

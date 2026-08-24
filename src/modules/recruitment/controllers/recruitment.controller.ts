@@ -20,6 +20,10 @@ import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
+import {
+  RecordCnvSubmissionDto,
+  RecordCnvAcknowledgementDto,
+} from '../dto/cnv.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -34,7 +38,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class RecruitmentController {
-  constructor(private readonly recruitmentService: RecruitmentService) { }
+  constructor(private readonly recruitmentService: RecruitmentService) {}
 
   @Post('candidates/upload-resume')
   @UseInterceptors(
@@ -69,8 +73,15 @@ export class RecruitmentController {
   }
 
   @Patch('departments/:id')
-  async updateDepartment(@Param('id') id: string, @Body() body: { name?: string; isActive?: boolean }) {
-    return this.recruitmentService.updateDepartment(id, body.name, body.isActive);
+  async updateDepartment(
+    @Param('id') id: string,
+    @Body() body: { name?: string; isActive?: boolean },
+  ) {
+    return this.recruitmentService.updateDepartment(
+      id,
+      body.name,
+      body.isActive,
+    );
   }
 
   @Delete('departments/:id')
@@ -90,7 +101,9 @@ export class RecruitmentController {
   }
 
   @Post('trainingTypes')
-  async createTrainingTypeLegacy(@Body() body: { name: string; isActive?: boolean }) {
+  async createTrainingTypeLegacy(
+    @Body() body: { name: string; isActive?: boolean },
+  ) {
     return this.recruitmentService.createTrainingType(body.name, body.isActive);
   }
 
@@ -104,7 +117,11 @@ export class RecruitmentController {
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
   ) {
-    return this.recruitmentService.updateTrainingType(id, body.name, body.isActive);
+    return this.recruitmentService.updateTrainingType(
+      id,
+      body.name,
+      body.isActive,
+    );
   }
 
   @Patch('training-types/:id')
@@ -112,7 +129,11 @@ export class RecruitmentController {
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
   ) {
-    return this.recruitmentService.updateTrainingType(id, body.name, body.isActive);
+    return this.recruitmentService.updateTrainingType(
+      id,
+      body.name,
+      body.isActive,
+    );
   }
 
   @Delete('trainingTypes/:id')
@@ -132,7 +153,10 @@ export class RecruitmentController {
   }
 
   @Get('requisitions')
-  async getRequisitions(@Query() query: PaginationQueryDto & { status?: string; departmentId?: string }) {
+  async getRequisitions(
+    @Query()
+    query: PaginationQueryDto & { status?: string; departmentId?: string },
+  ) {
     return this.recruitmentService.getRequisitions(query);
   }
 
@@ -161,7 +185,10 @@ export class RecruitmentController {
 
   // 2. Candidates
   @Get('candidates')
-  async getCandidates(@Query() query: PaginationQueryDto & { status?: string; requisitionId?: string }) {
+  async getCandidates(
+    @Query()
+    query: PaginationQueryDto & { status?: string; requisitionId?: string },
+  ) {
     return this.recruitmentService.getCandidates(query);
   }
 
@@ -190,7 +217,10 @@ export class RecruitmentController {
 
   // 3. Scheduling
   @Get('schedules')
-  async getSchedules(@Query() query: PaginationQueryDto & { status?: string; candidateId?: string }) {
+  async getSchedules(
+    @Query()
+    query: PaginationQueryDto & { status?: string; candidateId?: string },
+  ) {
     return this.recruitmentService.getSchedules(query);
   }
 
@@ -302,7 +332,10 @@ export class RecruitmentController {
   }
 
   @Patch('fiscal-years/:id')
-  async updateFiscalYear(@Param('id') id: string, @Body() body: { name?: string; isActive?: boolean }) {
+  async updateFiscalYear(
+    @Param('id') id: string,
+    @Body() body: { name?: string; isActive?: boolean },
+  ) {
     return this.recruitmentService.updateFiscalYear(id, body);
   }
 
@@ -310,5 +343,112 @@ export class RecruitmentController {
   async deleteFiscalYear(@Param('id') id: string) {
     return this.recruitmentService.deleteFiscalYear(id);
   }
-}
 
+  // ---------------------------------------------------------------------------
+  // 7. CNV Compliance Workflow
+  // ---------------------------------------------------------------------------
+
+  @Get('requisitions/:id/cnv')
+  async getCnvDetails(@Param('id') id: string) {
+    return this.recruitmentService.getCnvDetails(id);
+  }
+
+  @Post('requisitions/:id/cnv/generate')
+  async generateCnvNotification(
+    @Param('id') id: string,
+    @Body() body: { performedBy?: string },
+  ) {
+    return this.recruitmentService.generateCnvNotification(
+      id,
+      body?.performedBy,
+    );
+  }
+
+  @Post('requisitions/:id/cnv/submit')
+  @UseInterceptors(
+    FileInterceptor('document', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const dir = join(process.cwd(), 'uploads', 'cnv-documents');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `cnv-submission-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              'Only PDF files are allowed for CNV documents.',
+            ),
+            false,
+          );
+        }
+      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }),
+  )
+  async recordCnvSubmission(
+    @Param('id') id: string,
+    @Body() dto: RecordCnvSubmissionDto,
+    @UploadedFile() file?: any,
+  ) {
+    const documentUrl = file
+      ? `/uploads/cnv-documents/${file.filename}`
+      : undefined;
+    return this.recruitmentService.recordCnvSubmission(id, dto, documentUrl);
+  }
+
+  @Post('requisitions/:id/cnv/acknowledge')
+  @UseInterceptors(
+    FileInterceptor('document', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const dir = join(process.cwd(), 'uploads', 'cnv-documents');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `cnv-ack-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              'Only PDF files are allowed for CNV documents.',
+            ),
+            false,
+          );
+        }
+      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }),
+  )
+  async recordCnvAcknowledgement(
+    @Param('id') id: string,
+    @Body() dto: RecordCnvAcknowledgementDto,
+    @UploadedFile() file?: any,
+  ) {
+    const documentUrl = file
+      ? `/uploads/cnv-documents/${file.filename}`
+      : undefined;
+    return this.recruitmentService.recordCnvAcknowledgement(
+      id,
+      dto,
+      documentUrl,
+    );
+  }
+}

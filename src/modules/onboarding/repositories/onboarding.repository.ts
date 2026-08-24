@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma, EmployeeStatus, DocumentStatus, InductionStatus, ProbationStatus } from '@prisma/client';
+import {
+  Prisma,
+  EmployeeStatus,
+  DocumentStatus,
+  InductionStatus,
+  ProbationStatus,
+} from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
 @Injectable()
 export class OnboardingRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyEmployees(
     query: PaginationQueryDto & { status?: string; department?: string } = {},
@@ -56,13 +62,21 @@ export class OnboardingRepository {
       this.prisma.employee.count({ where }),
     ]);
 
-    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async updateDocumentStatus(id: string, status: string) {
     return this.prisma.onboardingDocument.update({
       where: { id },
-      data: { status: status as DocumentStatus, verifiedAt: status === 'VERIFIED' ? new Date() : null },
+      data: {
+        status: status as DocumentStatus,
+        verifiedAt: status === 'VERIFIED' ? new Date() : null,
+      },
     });
   }
 

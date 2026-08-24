@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PayrollRepository } from '../repositories/payroll.repository';
 import { CreateSalaryStructureDto } from '../dto/create-salary-structure.dto';
-import { SubmitRentReceiptDto, VerifyRentReceiptDto } from '../dto/submit-rent-receipt.dto';
+import {
+  SubmitRentReceiptDto,
+  VerifyRentReceiptDto,
+} from '../dto/submit-rent-receipt.dto';
 import { TaxDeclarationDto } from '../dto/tax-declaration.dto';
 import { CreateLoanDto } from '../dto/create-loan.dto';
 import { PrismaService } from '../../../database/prisma/prisma.service';
@@ -38,7 +45,11 @@ export class PayrollService {
       if (!banks || banks.length === 0) {
         try {
           await this.prisma.bank.createMany({
-            data: defaultBanks.map((name) => ({ name, isActive: true, updatedAt: new Date() })),
+            data: defaultBanks.map((name) => ({
+              name,
+              isActive: true,
+              updatedAt: new Date(),
+            })),
             skipDuplicates: true,
           });
           banks = await this.prisma.bank.findMany({
@@ -60,10 +71,7 @@ export class PayrollService {
     // 1. Resolve employee by ID or employeeId code
     let empExists = await this.prisma.employee.findFirst({
       where: {
-        OR: [
-          { id: dto.employeeId },
-          { employeeId: dto.employeeId },
-        ],
+        OR: [{ id: dto.employeeId }, { employeeId: dto.employeeId }],
       },
     });
 
@@ -81,7 +89,9 @@ export class PayrollService {
       }
       empExists = await this.prisma.employee.create({
         data: {
-          employeeId: code.startsWith('ASP-') ? code : `ASP-${cleanCode.toUpperCase()}`,
+          employeeId: code.startsWith('ASP-')
+            ? code
+            : `ASP-${cleanCode.toUpperCase()}`,
           firstName: 'Employee',
           lastName: code,
           email: `${cleanCode.toLowerCase()}@aspino.com`,
@@ -100,7 +110,14 @@ export class PayrollService {
     const statutoryBonus = dto.statutoryBonus || 0;
     const reimbursements = dto.reimbursements || 0;
 
-    const grossSalary = basic + hraAmount + da + conveyance + specialAllowance + statutoryBonus + reimbursements;
+    const grossSalary =
+      basic +
+      hraAmount +
+      da +
+      conveyance +
+      specialAllowance +
+      statutoryBonus +
+      reimbursements;
 
     return this.repo.upsertSalaryStructure({
       employeeId: empExists.id,
@@ -130,13 +147,29 @@ export class PayrollService {
   async getSalaryStructure(employeeId: string) {
     const struct = await this.repo.getSalaryStructureByEmployee(employeeId);
     if (!struct) {
-      throw new NotFoundException(`Salary structure for employee ID ${employeeId} not found`);
+      throw new NotFoundException(
+        `Salary structure for employee ID ${employeeId} not found`,
+      );
     }
     return struct;
   }
 
-  async getAllSalaryStructures(page?: number, limit?: number, search?: string, month?: number, year?: number, distinctEmployees?: boolean) {
-    return this.repo.getAllSalaryStructures(page, limit, search, month, year, distinctEmployees);
+  async getAllSalaryStructures(
+    page?: number,
+    limit?: number,
+    search?: string,
+    month?: number,
+    year?: number,
+    distinctEmployees?: boolean,
+  ) {
+    return this.repo.getAllSalaryStructures(
+      page,
+      limit,
+      search,
+      month,
+      year,
+      distinctEmployees,
+    );
   }
 
   async deleteSalaryStructure(id: string) {
@@ -148,18 +181,22 @@ export class PayrollService {
     const annualRent = dto.monthlyRent * 12;
 
     if (dto.id) {
-      const receipt = await this.prisma.hraRentReceipt.findUnique({ where: { id: dto.id } });
+      const receipt = await this.prisma.hraRentReceipt.findUnique({
+        where: { id: dto.id },
+      });
       if (!receipt) throw new NotFoundException('Rent receipt not found');
 
       let calculatedExemption = receipt.calculatedExemption;
 
       if (receipt.status === 'APPROVED') {
-        const salaryStruct = await this.repo.getSalaryStructureByEmployee(dto.employeeId);
+        const salaryStruct = await this.repo.getSalaryStructureByEmployee(
+          dto.employeeId,
+        );
         const annualBasic = (salaryStruct?.basicSalary || 0) * 12;
         const annualHra = (salaryStruct?.hraAmount || 0) * 12;
-        const cityPercent = 0.50;
+        const cityPercent = 0.5;
         const optA = annualHra;
-        const optB = Math.max(0, annualRent - (0.10 * annualBasic));
+        const optB = Math.max(0, annualRent - 0.1 * annualBasic);
         const optC = cityPercent * annualBasic;
         calculatedExemption = Math.min(optA, optB, optC);
 
@@ -216,16 +253,18 @@ export class PayrollService {
     let calculatedExemption = 0;
 
     if (dto.status === 'APPROVED') {
-      const salaryStruct = await this.repo.getSalaryStructureByEmployee(receipt.employeeId);
+      const salaryStruct = await this.repo.getSalaryStructureByEmployee(
+        receipt.employeeId,
+      );
       const annualBasic = (salaryStruct?.basicSalary || 0) * 12;
       const annualHra = (salaryStruct?.hraAmount || 0) * 12;
-      const cityPercent = 0.50;
+      const cityPercent = 0.5;
 
       // Section 13.2 HRA Exemption Rule (Least of a, b, c):
       // (a) Actual HRA received
       const optA = annualHra;
       // (b) Rent paid minus 10% of Basic Salary
-      const optB = Math.max(0, receipt.annualRent - (0.10 * annualBasic));
+      const optB = Math.max(0, receipt.annualRent - 0.1 * annualBasic);
       // (c) 50%/40% of Basic Salary
       const optC = cityPercent * annualBasic;
 
@@ -240,11 +279,30 @@ export class PayrollService {
       });
     }
 
-    return this.repo.updateRentReceiptStatus(id, dto.status, dto.verifiedBy, calculatedExemption);
+    return this.repo.updateRentReceiptStatus(
+      id,
+      dto.status,
+      dto.verifiedBy,
+      calculatedExemption,
+    );
   }
 
-  async getRentReceipts(page?: number, limit?: number, search?: string, month?: number, year?: number, employeeId?: string) {
-    return this.repo.getRentReceipts(page, limit, search, month, year, employeeId);
+  async getRentReceipts(
+    page?: number,
+    limit?: number,
+    search?: string,
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
+    return this.repo.getRentReceipts(
+      page,
+      limit,
+      search,
+      month,
+      year,
+      employeeId,
+    );
   }
 
   // --- Tax Declarations ---
@@ -261,18 +319,39 @@ export class PayrollService {
     });
   }
 
-  async getTaxDeclarations(page?: number, limit?: number, search?: string, financialYear?: string, employeeId?: string, month?: number, year?: number) {
-    return this.repo.getTaxDeclarations(page, limit, search, financialYear, employeeId, month, year);
+  async getTaxDeclarations(
+    page?: number,
+    limit?: number,
+    search?: string,
+    financialYear?: string,
+    employeeId?: string,
+    month?: number,
+    year?: number,
+  ) {
+    return this.repo.getTaxDeclarations(
+      page,
+      limit,
+      search,
+      financialYear,
+      employeeId,
+      month,
+      year,
+    );
   }
 
   // --- Loans & Advances ---
   async createLoan(dto: CreateLoanDto) {
     if (dto.id) {
-      const loan = await this.prisma.employeeLoan.findUnique({ where: { id: dto.id } });
+      const loan = await this.prisma.employeeLoan.findUnique({
+        where: { id: dto.id },
+      });
       if (!loan) throw new NotFoundException('Loan not found');
 
       const recoveredSoFar = loan.principalAmount - loan.balanceRemaining;
-      const balanceRemaining = Math.max(0, dto.principalAmount - recoveredSoFar);
+      const balanceRemaining = Math.max(
+        0,
+        dto.principalAmount - recoveredSoFar,
+      );
 
       return this.prisma.employeeLoan.update({
         where: { id: dto.id },
@@ -297,8 +376,22 @@ export class PayrollService {
     });
   }
 
-  async getActiveLoans(page?: number, limit?: number, search?: string, month?: number, year?: number, employeeId?: string) {
-    return this.repo.getActiveLoans(page, limit, search, month, year, employeeId);
+  async getActiveLoans(
+    page?: number,
+    limit?: number,
+    search?: string,
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
+    return this.repo.getActiveLoans(
+      page,
+      limit,
+      search,
+      month,
+      year,
+      employeeId,
+    );
   }
 
   // --- 13.3 & 13.4 Statutory Deductions & Monthly Payroll Run ---
@@ -313,6 +406,11 @@ export class PayrollService {
         departmentId: true,
         department: { select: { name: true } },
         designation: true,
+        bankId: true,
+        accountNumber: true,
+        ifscCode: true,
+        panNumber: true,
+        bank: { select: { id: true, name: true } },
       },
       orderBy: { firstName: 'asc' },
     });
@@ -320,41 +418,41 @@ export class PayrollService {
     if (employees.length === 0) {
       return [
         {
-          id: "emp-demo-001",
-          employeeId: "ASP-2026-001",
-          firstName: "Rahul",
-          lastName: "Sharma",
-          department: "Engineering",
-          designation: "Senior Software Engineer",
+          id: 'emp-demo-001',
+          employeeId: 'ASP-2026-001',
+          firstName: 'Rahul',
+          lastName: 'Sharma',
+          department: 'Engineering',
+          designation: 'Senior Software Engineer',
         },
         {
-          id: "emp-demo-002",
-          employeeId: "ASP-2026-002",
-          firstName: "Priya",
-          lastName: "Patel",
-          department: "Human Resources",
-          designation: "HR Executive",
+          id: 'emp-demo-002',
+          employeeId: 'ASP-2026-002',
+          firstName: 'Priya',
+          lastName: 'Patel',
+          department: 'Human Resources',
+          designation: 'HR Executive',
         },
         {
-          id: "emp-demo-003",
-          employeeId: "ASP-2026-003",
-          firstName: "Amit",
-          lastName: "Verma",
-          department: "Finance",
-          designation: "Payroll Manager",
+          id: 'emp-demo-003',
+          employeeId: 'ASP-2026-003',
+          firstName: 'Amit',
+          lastName: 'Verma',
+          department: 'Finance',
+          designation: 'Payroll Manager',
         },
         {
-          id: "emp-demo-004",
-          employeeId: "ASP-2026-004",
-          firstName: "Neha",
-          lastName: "Gupta",
-          department: "Quality Assurance",
-          designation: "QA Lead",
+          id: 'emp-demo-004',
+          employeeId: 'ASP-2026-004',
+          firstName: 'Neha',
+          lastName: 'Gupta',
+          department: 'Quality Assurance',
+          designation: 'QA Lead',
         },
       ];
     }
 
-    return employees.map(emp => ({
+    return employees.map((emp) => ({
       id: emp.id,
       employeeId: emp.employeeId,
       firstName: emp.firstName,
@@ -376,13 +474,23 @@ export class PayrollService {
     let totalNetAll = 0;
 
     // Create or find PayrollRun record
-    const runRecord = await this.repo.createOrUpdatePayrollRun(month, year, 'PREVIEW', employees.length, 0, 0);
+    const runRecord = await this.repo.createOrUpdatePayrollRun(
+      month,
+      year,
+      'PREVIEW',
+      employees.length,
+      0,
+      0,
+    );
     await this.repo.deletePayslipsForRun(runRecord.id);
 
     const generatedPayslips: any[] = [];
 
     for (const emp of employees) {
-      const struct = emp.salaryStructures?.find((s: any) => s.month === month && s.year === year) || emp.salaryStructures?.[0];
+      const struct =
+        emp.salaryStructures?.find(
+          (s: any) => s.month === month && s.year === year,
+        ) || emp.salaryStructures?.[0];
       if (!struct) continue; // Skip employees without configured salary structure
 
       // Fetch Attendance records for the month to calculate present days & OT
@@ -398,13 +506,15 @@ export class PayrollService {
         where: { employeeId: emp.id },
         select: { leaveType: true },
       });
-      const paidLeaveTypes = paidLeaveBalances.map(b => b.leaveType);
+      const paidLeaveTypes = paidLeaveBalances.map((b) => b.leaveType);
 
       // Any approved leave application that is NOT one of the allocated paid types is considered LWP
       const lwpLeaves = await this.prisma.leaveApplication.findMany({
         where: {
           employeeId: emp.id,
-          ...(paidLeaveTypes.length > 0 ? { leaveType: { notIn: paidLeaveTypes } } : {}),
+          ...(paidLeaveTypes.length > 0
+            ? { leaveType: { notIn: paidLeaveTypes } }
+            : {}),
           status: 'APPROVED',
           startDate: { lte: endDate },
           endDate: { gte: startDate },
@@ -417,25 +527,33 @@ export class PayrollService {
       }
 
       // OT hours calculation
-      const otHours = attendances.reduce((acc, curr) => acc + (curr.otHours || 0), 0);
+      const otHours = attendances.reduce(
+        (acc, curr) => acc + (curr.otHours || 0),
+        0,
+      );
 
       // Night shift & Holdover duty count
       const nightShiftCount = attendances.filter(
-        (a) => a.isFullNightPresent || a.shiftName?.toLowerCase().includes('night')
+        (a) =>
+          a.isFullNightPresent || a.shiftName?.toLowerCase().includes('night'),
       ).length;
 
       // Sunday & Holiday present count
       const sundayHolidayCount = attendances.filter(
-        (a) => a.isSundayPresent || a.isHolidayPresent
+        (a) => a.isSundayPresent || a.isHolidayPresent,
       ).length;
 
       // Extra Shift & Overtime Pay Calculation (2.0x Double OT Rate for Pharma continuous & extra shifts)
-      const hourlyRate = (struct.basicSalary + (struct.da || 0)) / (totalDays * 8);
+      const hourlyRate =
+        (struct.basicSalary + (struct.da || 0)) / (totalDays * 8);
       const otPay = Math.round(otHours * hourlyRate * 2.0);
       const nightAllowance = nightShiftCount * 150; // ₹150 per night shift
-      const sundayHolidayAllowance = Math.round(sundayHolidayCount * ((struct.basicSalary / totalDays) * 1.5));
+      const sundayHolidayAllowance = Math.round(
+        sundayHolidayCount * ((struct.basicSalary / totalDays) * 1.5),
+      );
 
-      const extraShiftTotalEarnings = otPay + nightAllowance + sundayHolidayAllowance;
+      const extraShiftTotalEarnings =
+        otPay + nightAllowance + sundayHolidayAllowance;
 
       const payableDays = Math.max(0, totalDays - lwpDays);
       const prorationFactor = payableDays / totalDays;
@@ -445,11 +563,16 @@ export class PayrollService {
       const hra = Math.round(struct.hraAmount * prorationFactor);
       const da = Math.round(struct.da * prorationFactor);
       const conveyance = Math.round(struct.conveyance * prorationFactor);
-      const special = Math.round(struct.specialAllowance * prorationFactor) + extraShiftTotalEarnings;
+      const special =
+        Math.round(struct.specialAllowance * prorationFactor) +
+        extraShiftTotalEarnings;
       const bonus = Math.round(struct.statutoryBonus * prorationFactor);
-      const reimbursements = Math.round(struct.reimbursements * prorationFactor);
+      const reimbursements = Math.round(
+        struct.reimbursements * prorationFactor,
+      );
 
-      const grossEarnings = basic + hra + da + conveyance + special + bonus + reimbursements;
+      const grossEarnings =
+        basic + hra + da + conveyance + special + bonus + reimbursements;
 
       // Statutory Deductions Calculation (Fixed Amounts)
       const pfDeduction = struct.pfAmount || 0;
@@ -465,7 +588,10 @@ export class PayrollService {
       const sec80D = latestDeclaration?.section80D || 0;
       const stdDeduction = 50000;
 
-      const taxableAnnualIncome = Math.max(0, annualGross - hraExemption - sec80C - sec80D - stdDeduction);
+      const taxableAnnualIncome = Math.max(
+        0,
+        annualGross - hraExemption - sec80C - sec80D - stdDeduction,
+      );
 
       if (taxableAnnualIncome > 1000000) {
         tdsDeduction = Math.round((taxableAnnualIncome * 0.15) / 12);
@@ -477,10 +603,14 @@ export class PayrollService {
       let loanRecovery = 0;
       const activeLoan = emp.loans[0];
       if (activeLoan && activeLoan.balanceRemaining > 0) {
-        loanRecovery = Math.min(activeLoan.monthlyInstallment, activeLoan.balanceRemaining);
+        loanRecovery = Math.min(
+          activeLoan.monthlyInstallment,
+          activeLoan.balanceRemaining,
+        );
       }
 
-      const totalDeductions = pfDeduction + esiDeduction + ptDeduction + tdsDeduction + loanRecovery;
+      const totalDeductions =
+        pfDeduction + esiDeduction + ptDeduction + tdsDeduction + loanRecovery;
       const netSalary = Math.max(0, grossEarnings - totalDeductions);
 
       totalGrossAll += grossEarnings;
@@ -520,21 +650,39 @@ export class PayrollService {
     }
 
     // Update totals in PayrollRun
-    await this.repo.createOrUpdatePayrollRun(month, year, 'PREVIEW', generatedPayslips.length, totalGrossAll, totalNetAll);
+    await this.repo.createOrUpdatePayrollRun(
+      month,
+      year,
+      'PREVIEW',
+      generatedPayslips.length,
+      totalGrossAll,
+      totalNetAll,
+    );
 
     return this.repo.getPayrollRun(month, year);
   }
 
   async approvePayrollRun(month: number, year: number, approvedBy?: string) {
     const run = await this.repo.getPayrollRun(month, year);
-    if (!run) throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
+    if (!run)
+      throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
 
     // Process loan recoveries for each payslip
     for (const ps of run.payslips) {
       if (ps.loanRecovery > 0) {
-        const activeLoans = await this.repo.getActiveLoans(undefined, undefined, undefined, undefined, undefined, ps.employeeId);
+        const activeLoans = await this.repo.getActiveLoans(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          ps.employeeId,
+        );
         if (activeLoans.data.length > 0) {
-          await this.repo.updateLoanBalance(activeLoans.data[0].id, ps.loanRecovery);
+          await this.repo.updateLoanBalance(
+            activeLoans.data[0].id,
+            ps.loanRecovery,
+          );
         }
       }
     }
@@ -546,7 +694,14 @@ export class PayrollService {
     return this.repo.getPayrollRun(month, year);
   }
 
-  async getPayslips(page?: number, limit?: number, search?: string, month?: number, year?: number, employeeId?: string) {
+  async getPayslips(
+    page?: number,
+    limit?: number,
+    search?: string,
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
     return this.repo.getPayslips(page, limit, search, month, year, employeeId);
   }
 
@@ -559,21 +714,30 @@ export class PayrollService {
   // --- Bank Transfer & Statutory Reports Export ---
   async generateBankTransferFile(month: number, year: number) {
     const run = await this.repo.getPayrollRun(month, year);
-    if (!run) throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
+    if (!run)
+      throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
 
-    const headers = 'Employee Code,Employee Name,Bank Name,Account Number,IFSC Code,Net Salary (INR)\n';
-    const rows = run.payslips.map(ps => 
-      `"${ps.employee.employeeId}","${ps.employee.firstName} ${ps.employee.lastName}","${ps.bankName || 'HDFC Bank'}","${ps.accountNumber || 'ACC-123'}","${ps.ifscCode || 'HDFC0001234'}",${ps.netSalary}`
-    ).join('\n');
+    const headers =
+      'Employee Code,Employee Name,Bank Name,Account Number,IFSC Code,Net Salary (INR)\n';
+    const rows = run.payslips
+      .map(
+        (ps) =>
+          `"${ps.employee.employeeId}","${ps.employee.firstName} ${ps.employee.lastName}","${ps.bankName || 'HDFC Bank'}","${ps.accountNumber || 'ACC-123'}","${ps.ifscCode || 'HDFC0001234'}",${ps.netSalary}`,
+      )
+      .join('\n');
 
-    return { filename: `Bank_Disbursement_${year}_${month}.csv`, content: headers + rows };
+    return {
+      filename: `Bank_Disbursement_${year}_${month}.csv`,
+      content: headers + rows,
+    };
   }
 
   async generateStatutoryReports(month: number, year: number) {
     const run = await this.repo.getPayrollRun(month, year);
-    if (!run) throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
+    if (!run)
+      throw new NotFoundException(`Payroll run for ${month}/${year} not found`);
 
-    const pfReport = run.payslips.map(ps => ({
+    const pfReport = run.payslips.map((ps) => ({
       employeeId: ps.employee.employeeId,
       name: `${ps.employee.firstName} ${ps.employee.lastName}`,
       pfWages: ps.basicSalary + ps.da,
@@ -581,20 +745,24 @@ export class PayrollService {
       employerPf: ps.pfDeduction, // 1:1 match
     }));
 
-    const esiReport = run.payslips.filter(ps => ps.esiDeduction > 0).map(ps => ({
-      employeeId: ps.employee.employeeId,
-      name: `${ps.employee.firstName} ${ps.employee.lastName}`,
-      grossSalary: ps.grossEarnings,
-      employeeEsi: ps.esiDeduction,
-      employerEsi: Math.ceil(ps.grossEarnings * 0.0325),
-    }));
+    const esiReport = run.payslips
+      .filter((ps) => ps.esiDeduction > 0)
+      .map((ps) => ({
+        employeeId: ps.employee.employeeId,
+        name: `${ps.employee.firstName} ${ps.employee.lastName}`,
+        grossSalary: ps.grossEarnings,
+        employeeEsi: ps.esiDeduction,
+        employerEsi: Math.ceil(ps.grossEarnings * 0.0325),
+      }));
 
-    const ptReport = run.payslips.filter(ps => ps.ptDeduction > 0).map(ps => ({
-      employeeId: ps.employee.employeeId,
-      name: `${ps.employee.firstName} ${ps.employee.lastName}`,
-      state: 'Maharashtra',
-      ptAmount: ps.ptDeduction,
-    }));
+    const ptReport = run.payslips
+      .filter((ps) => ps.ptDeduction > 0)
+      .map((ps) => ({
+        employeeId: ps.employee.employeeId,
+        name: `${ps.employee.firstName} ${ps.employee.lastName}`,
+        state: 'Maharashtra',
+        ptAmount: ps.ptDeduction,
+      }));
 
     return { month, year, pfReport, esiReport, ptReport };
   }
@@ -606,13 +774,26 @@ export class PayrollService {
     });
     if (!emp) throw new NotFoundException('Employee not found');
 
-    const payslipsResult = await this.repo.getPayslips(1, 1000000, undefined, undefined, undefined, employeeId);
+    const payslipsResult = await this.repo.getPayslips(
+      1,
+      1000000,
+      undefined,
+      undefined,
+      undefined,
+      employeeId,
+    );
     const payslips = payslipsResult.data;
     const totalGross = payslips.reduce((acc, p) => acc + p.grossEarnings, 0);
     const totalPf = payslips.reduce((acc, p) => acc + p.pfDeduction, 0);
     const totalTds = payslips.reduce((acc, p) => acc + p.tdsDeduction, 0);
 
-    const taxDeclsResult = await this.repo.getTaxDeclarations(1, 1000000, undefined, financialYear, employeeId);
+    const taxDeclsResult = await this.repo.getTaxDeclarations(
+      1,
+      1000000,
+      undefined,
+      financialYear,
+      employeeId,
+    );
     const declaration = taxDeclsResult.data[0];
 
     return {
@@ -629,7 +810,13 @@ export class PayrollService {
       section80D: declaration?.section80D || 0,
       totalPfDeduction: totalPf,
       totalTdsDeducted: totalTds,
-      netTaxableIncome: Math.max(0, totalGross - (declaration?.hraExemptionAmount || 0) - 50000 - (declaration?.section80C || 0)),
+      netTaxableIncome: Math.max(
+        0,
+        totalGross -
+          (declaration?.hraExemptionAmount || 0) -
+          50000 -
+          (declaration?.section80C || 0),
+      ),
     };
   }
 
@@ -638,7 +825,7 @@ export class PayrollService {
       where: { id: exitProcessId },
     });
     if (!exitProcess) throw new NotFoundException('Exit process not found');
-    
+
     const empId = exitProcess.employeeId;
     const salaryStruct = await this.repo.getSalaryStructureByEmployee(empId);
     if (!salaryStruct) {
@@ -650,31 +837,45 @@ export class PayrollService {
         netPayable: 0,
       };
     }
-    
+
     // Prorate salary for the month of lastWorkingDay
     const lwd = new Date(exitProcess.lastWorkingDay);
     const month = lwd.getMonth() + 1;
     const year = lwd.getFullYear();
     const daysInMonth = new Date(year, month, 0).getDate();
     const daysWorked = lwd.getDate();
-    
+
     const prorationFactor = daysWorked / daysInMonth;
-    const pendingSalary = Math.round(salaryStruct.grossSalary * prorationFactor);
-    
+    const pendingSalary = Math.round(
+      salaryStruct.grossSalary * prorationFactor,
+    );
+
     // Leave Encashment: Earned Leaves * (Basic / 30)
     const earnedLeave = await this.prisma.leaveBalance.findFirst({
       where: { employeeId: empId, leaveType: 'Earned' },
     });
-    const elBalance = earnedLeave ? Math.max(0, earnedLeave.allocated - earnedLeave.used) : 0;
+    const elBalance = earnedLeave
+      ? Math.max(0, earnedLeave.allocated - earnedLeave.used)
+      : 0;
     const dailyBasic = salaryStruct.basicSalary / 30;
     const leaveEncashment = Math.round(elBalance * dailyBasic);
-    
+
     // Recoveries
-    const activeLoansResult = await this.repo.getActiveLoans(1, 1000000, undefined, undefined, undefined, empId);
-    const recoveries = activeLoansResult.data.reduce((acc, loan) => acc + loan.balanceRemaining, 0);
-    
+    const activeLoansResult = await this.repo.getActiveLoans(
+      1,
+      1000000,
+      undefined,
+      undefined,
+      undefined,
+      empId,
+    );
+    const recoveries = activeLoansResult.data.reduce(
+      (acc, loan) => acc + loan.balanceRemaining,
+      0,
+    );
+
     const bonus = 0; // Configurable based on policy
-    
+
     return {
       pendingSalary,
       leaveEncashment,
@@ -692,16 +893,31 @@ export class PayrollService {
     return this.repo.batchSaveSalaryMatrix(records);
   }
 
-  async copyPreviousMonthSalaries(fromMonth?: number, fromYear?: number, toMonth?: number, toYear?: number, password?: string) {
+  async copyPreviousMonthSalaries(
+    fromMonth?: number,
+    fromYear?: number,
+    toMonth?: number,
+    toYear?: number,
+    password?: string,
+  ) {
     const requiredPassword = process.env.SALARY_TRANSFER_PASSWORD || 'admin123';
     if (!password || password.trim() !== requiredPassword.trim()) {
-      throw new BadRequestException('Invalid transfer password. Please enter the correct password.');
+      throw new BadRequestException(
+        'Invalid transfer password. Please enter the correct password.',
+      );
     }
-    return this.repo.copyPreviousMonthSalaries(fromMonth, fromYear, toMonth, toYear);
+    return this.repo.copyPreviousMonthSalaries(
+      fromMonth,
+      fromYear,
+      toMonth,
+      toYear,
+    );
   }
 
   async recordManualRepayment(loanId: string, amount: number) {
-    const loan = await this.prisma.employeeLoan.findUnique({ where: { id: loanId } });
+    const loan = await this.prisma.employeeLoan.findUnique({
+      where: { id: loanId },
+    });
     if (!loan) throw new NotFoundException('Loan not found');
 
     const newBalance = Math.max(0, loan.balanceRemaining - amount);
@@ -719,7 +935,7 @@ export class PayrollService {
 }
 
 function lveLeavesCount(leaves: any[], start: Date, end: Date): number[] {
-  return leaves.map(l => {
+  return leaves.map((l) => {
     const s = new Date(l.startDate) < start ? start : new Date(l.startDate);
     const e = new Date(l.endDate) > end ? end : new Date(l.endDate);
     const diffTime = Math.abs(e.getTime() - s.getTime());

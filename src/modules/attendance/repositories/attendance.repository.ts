@@ -6,33 +6,49 @@ import { buildEmployeeSearchConditions } from '../../../common/utils/search.util
 
 function parseCsvDateToUTC(rawDate: string): Date | null {
   if (!rawDate || typeof rawDate !== 'string') return null;
-  let str = rawDate.trim().replace(/^"(.*)"$/, '$1').trim();
+  const str = rawDate
+    .trim()
+    .replace(/^"(.*)"$/, '$1')
+    .trim();
   if (!str) return null;
 
   const dateOnly = str.includes('T') ? str.split('T')[0] : str.split(' ')[0];
 
   const monthMap: Record<string, number> = {
-    jan: 1, january: 1,
-    feb: 2, february: 2,
-    mar: 3, march: 3,
-    apr: 4, april: 4,
+    jan: 1,
+    january: 1,
+    feb: 2,
+    february: 2,
+    mar: 3,
+    march: 3,
+    apr: 4,
+    april: 4,
     may: 5,
-    jun: 6, june: 6,
-    jul: 7, july: 7,
-    aug: 8, august: 8,
-    sep: 9, september: 9,
-    oct: 10, october: 10,
-    nov: 11, november: 11,
-    dec: 12, december: 12
+    jun: 6,
+    june: 6,
+    jul: 7,
+    july: 7,
+    aug: 8,
+    august: 8,
+    sep: 9,
+    september: 9,
+    oct: 10,
+    october: 10,
+    nov: 11,
+    november: 11,
+    dec: 12,
+    december: 12,
   };
 
   const parts = dateOnly.split(/[\/\-\.\s]/);
-  let year: number = 0, month: number = 0, day: number = 0;
+  let year: number = 0,
+    month: number = 0,
+    day: number = 0;
 
   if (parts.length === 3) {
-    let p0Str = parts[0].trim();
-    let p1Str = parts[1].trim();
-    let p2Str = parts[2].trim();
+    const p0Str = parts[0].trim();
+    const p1Str = parts[1].trim();
+    const p2Str = parts[2].trim();
 
     if (monthMap[p1Str.toLowerCase()]) {
       day = parseInt(p0Str, 10);
@@ -78,7 +94,16 @@ function parseCsvDateToUTC(rawDate: string): Date | null {
 
   const parsed = new Date(dateOnly);
   if (!isNaN(parsed.getTime())) {
-    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12, 0, 0));
+    return new Date(
+      Date.UTC(
+        parsed.getFullYear(),
+        parsed.getMonth(),
+        parsed.getDate(),
+        12,
+        0,
+        0,
+      ),
+    );
   }
 
   return null;
@@ -86,7 +111,7 @@ function parseCsvDateToUTC(rawDate: string): Date | null {
 
 @Injectable()
 export class AttendanceRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyShifts(query: PaginationQueryDto = {}) {
     const page = Number(query.page) || 1;
@@ -95,9 +120,7 @@ export class AttendanceRepository {
 
     const where: Prisma.ShiftWhereInput = {};
     if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-      ];
+      where.OR = [{ name: { contains: query.search, mode: 'insensitive' } }];
     }
 
     const orderBy: any = {};
@@ -148,7 +171,9 @@ export class AttendanceRepository {
     } = {},
   ) {
     const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || (query.month || query.year || query.startDate ? 1000 : 10);
+    const limit =
+      Number(query.limit) ||
+      (query.month || query.year || query.startDate ? 1000 : 10);
     const skip = (page - 1) * limit;
 
     const where: Prisma.ShiftRosterWhereInput = {};
@@ -225,8 +250,10 @@ export class AttendanceRepository {
     changedByRole?: string;
   }) {
     const targetDate = new Date(dto.date);
-    const newShift = await this.prisma.shift.findUnique({ where: { id: dto.shiftId } });
-    
+    const newShift = await this.prisma.shift.findUnique({
+      where: { id: dto.shiftId },
+    });
+
     // Check if a roster already exists for this employee and date
     const existing = await this.prisma.shiftRoster.findFirst({
       where: {
@@ -315,16 +342,19 @@ export class AttendanceRepository {
     changedByName?: string;
     changedByRole?: string;
   }) {
-    const shift = await this.prisma.shift.findUnique({ where: { id: dto.shiftId } });
+    const shift = await this.prisma.shift.findUnique({
+      where: { id: dto.shiftId },
+    });
     if (!shift) {
       throw new Error('Selected shift does not exist.');
     }
 
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
-    const daysOfWeek = Array.isArray(dto.daysOfWeek) && dto.daysOfWeek.length > 0
-      ? dto.daysOfWeek.map(Number)
-      : null;
+    const daysOfWeek =
+      Array.isArray(dto.daysOfWeek) && dto.daysOfWeek.length > 0
+        ? dto.daysOfWeek.map(Number)
+        : null;
 
     let processedCount = 0;
     const auditLogsToCreate: Prisma.ShiftAuditLogCreateManyInput[] = [];
@@ -384,9 +414,12 @@ export class AttendanceRepository {
             newShiftId: dto.shiftId,
             newShiftName: shift.name,
             rosterDate,
-            changedByName: dto.changedByName || dto.managedByHod || 'Department HOD',
+            changedByName:
+              dto.changedByName || dto.managedByHod || 'Department HOD',
             changedByRole: dto.changedByRole || 'HOD',
-            reason: dto.reason || (existing ? 'Bulk shift change' : 'Bulk schedule assignment'),
+            reason:
+              dto.reason ||
+              (existing ? 'Bulk shift change' : 'Bulk schedule assignment'),
           });
 
           processedCount++;
@@ -549,17 +582,27 @@ export class AttendanceRepository {
   }
 
   async findManyAttendance(
-    query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string; month?: string | number; year?: string | number; departmentId?: string } = {},
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      status?: string;
+      date?: string;
+      month?: string | number;
+      year?: string | number;
+      departmentId?: string;
+    } = {},
   ) {
     const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || (query.month || query.year ? 1000 : 10);
+    const limit =
+      Number(query.limit) || (query.month || query.year ? 1000 : 10);
     const skip = (page - 1) * limit;
 
     const where: Prisma.AttendanceWhereInput = {};
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
       const searchUpper = query.search.toUpperCase().trim();
-      const isValidStatus = Object.values(AttendanceStatus).includes(searchUpper as any);
+      const isValidStatus = Object.values(AttendanceStatus).includes(
+        searchUpper as any,
+      );
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { shiftName: { contains: query.search, mode: 'insensitive' } },
@@ -694,29 +737,35 @@ export class AttendanceRepository {
     });
   }
 
-  async bulkImportAttendance(records: Array<{
-    employeeCodeOrId: string;
-    date: string;
-    checkIn?: string;
-    checkOut?: string;
-    status?: string;
-    shiftName?: string;
-    totalWorkHours?: number;
-    otHours?: number;
-    lateHours?: number;
-    earlyGoingHours?: number;
-    presentDay?: number;
-    isHalfDay?: boolean;
-    isSundayPresent?: boolean;
-    isFullNightPresent?: boolean;
-    isHolidayPresent?: boolean;
-    captureMethod?: string;
-  }>) {
+  async bulkImportAttendance(
+    records: Array<{
+      employeeCodeOrId: string;
+      date: string;
+      checkIn?: string;
+      checkOut?: string;
+      status?: string;
+      shiftName?: string;
+      totalWorkHours?: number;
+      otHours?: number;
+      lateHours?: number;
+      earlyGoingHours?: number;
+      presentDay?: number;
+      isHalfDay?: boolean;
+      isSundayPresent?: boolean;
+      isFullNightPresent?: boolean;
+      isHolidayPresent?: boolean;
+      captureMethod?: string;
+    }>,
+  ) {
     const results = {
       total: records.length,
       successCount: 0,
       failureCount: 0,
-      errors: [] as Array<{ row: number; employeeCodeOrId: string; error: string }>,
+      errors: [] as Array<{
+        row: number;
+        employeeCodeOrId: string;
+        error: string;
+      }>,
     };
 
     // Cache and index employees and shifts with flexible normalizers
@@ -729,8 +778,13 @@ export class AttendanceRepository {
     });
 
     const empMap = new Map<string, string>();
-    const normalize = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '');
-    const normalizeStripZeros = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '').replace(/0+(?=\d)/g, '');
+    const normalize = (str: string) =>
+      (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const normalizeStripZeros = (str: string) =>
+      (str || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/gi, '')
+        .replace(/0+(?=\d)/g, '');
 
     allEmployees.forEach((emp) => {
       empMap.set(emp.id.toLowerCase(), emp.id);
@@ -755,39 +809,56 @@ export class AttendanceRepository {
 
       if (!rawCode) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: 'Employee ID or Code is missing' });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: 'Employee ID or Code is missing',
+        });
         continue;
       }
 
-      let empId = empMap.get(rawCode.toLowerCase()) || 
-                  empMap.get(normalize(rawCode)) || 
-                  empMap.get(normalizeStripZeros(rawCode));
+      let empId =
+        empMap.get(rawCode.toLowerCase()) ||
+        empMap.get(normalize(rawCode)) ||
+        empMap.get(normalizeStripZeros(rawCode));
 
       if (!empId) {
         // Fallback partial matching
-        const match = allEmployees.find(e => 
-          normalize(e.employeeId).includes(normalize(rawCode)) ||
-          normalize(rawCode).includes(normalize(e.employeeId))
+        const match = allEmployees.find(
+          (e) =>
+            normalize(e.employeeId).includes(normalize(rawCode)) ||
+            normalize(rawCode).includes(normalize(e.employeeId)),
         );
         if (match) empId = match.id;
       }
 
       if (!empId) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: `Employee not found for code/ID "${rawCode}"` });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: `Employee not found for code/ID "${rawCode}"`,
+        });
         continue;
       }
 
       const dateObj = parseCsvDateToUTC(rec.date);
       if (!dateObj) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: `Invalid date format "${rec.date}"` });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: `Invalid date format "${rec.date}"`,
+        });
         continue;
       }
 
       // Validate Shift Name if provided in CSV
       const rawShiftName = (rec.shiftName || '').trim();
-      let matchedShift = rawShiftName ? (shiftMap.get(rawShiftName.toLowerCase()) || shiftMap.get(normalize(rawShiftName))) : null;
+      const matchedShift = rawShiftName
+        ? shiftMap.get(rawShiftName.toLowerCase()) ||
+          shiftMap.get(normalize(rawShiftName))
+        : null;
 
       if (rawShiftName && !matchedShift) {
         results.failureCount++;
@@ -830,11 +901,15 @@ export class AttendanceRepository {
         }
       }
 
-      const finalShiftId = matchedShift?.id || assignedRoster?.shiftId || allShifts[0]?.id;
-      const finalShiftName = matchedShift?.name || assignedRoster?.shift?.name || 'General Shift';
+      const finalShiftId =
+        matchedShift?.id || assignedRoster?.shiftId || allShifts[0]?.id;
+      const finalShiftName =
+        matchedShift?.name || assignedRoster?.shift?.name || 'General Shift';
 
       try {
-        const parseTimeToHM = (rawTime?: string): { h: number; m: number } | null => {
+        const parseTimeToHM = (
+          rawTime?: string,
+        ): { h: number; m: number } | null => {
           if (!rawTime || typeof rawTime !== 'string') return null;
           let str = rawTime.trim();
           if (!str) return null;
@@ -845,59 +920,203 @@ export class AttendanceRepository {
           if (parts.length >= 2) {
             const h = parseInt(parts[0], 10);
             const m = parseInt(parts[1], 10);
-            if (!isNaN(h) && !isNaN(m) && h >= 0 && h < 24 && m >= 0 && m < 60) {
+            if (
+              !isNaN(h) &&
+              !isNaN(m) &&
+              h >= 0 &&
+              h < 24 &&
+              m >= 0 &&
+              m < 60
+            ) {
               return { h, m };
             }
           }
           return null;
         };
 
+        // Multi-punch and Break Detection Logic
+        let rawPunchesList: string[] = [];
+        if (Array.isArray((rec as any).punches)) {
+          rawPunchesList = (rec as any).punches
+            .map(String)
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+        } else if (
+          typeof (rec as any).punches === 'string' &&
+          (rec as any).punches.trim()
+        ) {
+          rawPunchesList = (rec as any).punches
+            .split(/[,;\s]+/)
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+        } else {
+          // Check for in1, out1, in2, out2, in3, out3 etc.
+          const inOutCandidates = [
+            rec.checkIn || (rec as any).in1,
+            (rec as any).out1 || ((rec as any).in2 ? rec.checkOut : undefined),
+            (rec as any).in2,
+            (rec as any).out2,
+            (rec as any).in3,
+            (rec as any).out3,
+            (rec as any).in4,
+            (rec as any).out4,
+            rec.checkOut,
+          ].filter(Boolean) as string[];
+
+          if (inOutCandidates.length > 2) {
+            // Deduplicate sequential duplicates while preserving order
+            rawPunchesList = inOutCandidates.filter(
+              (v, idx, arr) => arr.indexOf(v) === idx,
+            );
+          } else {
+            if (rec.checkIn) rawPunchesList.push(String(rec.checkIn));
+            if (rec.checkOut && rec.checkOut !== rec.checkIn)
+              rawPunchesList.push(String(rec.checkOut));
+          }
+        }
+
+        // Calculate Work Minutes and Break Minutes across punches
+        let totalBreakMins = Number((rec as any).breakDurationMinutes || 0);
+        let calculatedWorkHours: number | null = null;
+        let effectiveCheckInStr = rec.checkIn;
+        let effectiveCheckOutStr = rec.checkOut;
+
+        if (rawPunchesList.length >= 2) {
+          effectiveCheckInStr = rawPunchesList[0];
+          effectiveCheckOutStr = rawPunchesList[rawPunchesList.length - 1];
+
+          // If even number of punches (e.g. In1, Out1, In2, Out2), pair them up
+          if (rawPunchesList.length % 2 === 0) {
+            let totalWorkMins = 0;
+            let detectedBreakMins = 0;
+
+            for (let pIdx = 0; pIdx < rawPunchesList.length; pIdx += 2) {
+              const inHM = parseTimeToHM(rawPunchesList[pIdx]);
+              const outHM = parseTimeToHM(rawPunchesList[pIdx + 1]);
+              if (inHM && outHM) {
+                let sessionMins =
+                  outHM.h * 60 + outHM.m - (inHM.h * 60 + inHM.m);
+                if (sessionMins < 0) sessionMins += 24 * 60; // Crosses midnight
+                totalWorkMins += sessionMins;
+              }
+
+              // Intermediate break between Out(p) and In(p+1)
+              if (pIdx + 2 < rawPunchesList.length) {
+                const prevOutHM = parseTimeToHM(rawPunchesList[pIdx + 1]);
+                const nextInHM = parseTimeToHM(rawPunchesList[pIdx + 2]);
+                if (prevOutHM && nextInHM) {
+                  let gapMins =
+                    nextInHM.h * 60 +
+                    nextInHM.m -
+                    (prevOutHM.h * 60 + prevOutHM.m);
+                  if (gapMins < 0) gapMins += 24 * 60;
+                  detectedBreakMins += gapMins;
+                }
+              }
+            }
+
+            if (totalWorkMins > 0) {
+              calculatedWorkHours = parseFloat((totalWorkMins / 60).toFixed(2));
+            }
+            if (detectedBreakMins > 0 && totalBreakMins === 0) {
+              totalBreakMins = detectedBreakMins;
+            }
+          }
+        }
+
         // Safe Date Parsing for checkIn
         let checkInDate: Date | null = null;
-        if (rec.checkIn) {
-          const hm = parseTimeToHM(String(rec.checkIn));
+        if (effectiveCheckInStr) {
+          const hm = parseTimeToHM(String(effectiveCheckInStr));
           if (hm) {
-            checkInDate = new Date(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate(), hm.h, hm.m, 0));
+            checkInDate = new Date(
+              Date.UTC(
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth(),
+                dateObj.getUTCDate(),
+                hm.h,
+                hm.m,
+                0,
+              ),
+            );
           }
         }
 
         // Safe Date Parsing for checkOut
         let checkOutDate: Date | null = null;
-        if (rec.checkOut) {
-          const hm = parseTimeToHM(String(rec.checkOut));
+        if (effectiveCheckOutStr) {
+          const hm = parseTimeToHM(String(effectiveCheckOutStr));
           if (hm) {
-            checkOutDate = new Date(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate(), hm.h, hm.m, 0));
+            checkOutDate = new Date(
+              Date.UTC(
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth(),
+                dateObj.getUTCDate(),
+                hm.h,
+                hm.m,
+                0,
+              ),
+            );
           }
         }
 
         // Safe Number Calculation for totalWorkHours
         let workHours = Number(rec.totalWorkHours);
         if (isNaN(workHours) || workHours <= 0) {
-          if (checkInDate && checkOutDate) {
+          if (calculatedWorkHours && calculatedWorkHours > 0) {
+            workHours = calculatedWorkHours;
+          } else if (checkInDate && checkOutDate) {
             const diffMs = checkOutDate.getTime() - checkInDate.getTime();
-            const calculated = diffMs / (1000 * 60 * 60);
-            workHours = !isNaN(calculated) && calculated > 0 ? parseFloat(calculated.toFixed(2)) : 8.0;
+            let calculated = diffMs / (1000 * 60 * 60);
+            if (totalBreakMins > 0) {
+              calculated = Math.max(0, calculated - totalBreakMins / 60);
+            }
+            workHours =
+              !isNaN(calculated) && calculated > 0
+                ? parseFloat(calculated.toFixed(2))
+                : 8.0;
           } else {
             workHours = 8.0;
           }
         }
 
-        let rawStatus = (rec.status || 'PRESENT').toUpperCase().trim();
+        const rawStatus = (rec.status || 'PRESENT').toUpperCase().trim();
         let status = 'PRESENT';
         let isHalfDay = Boolean(rec.isHalfDay);
 
-        if (rawStatus === 'HALFDAY' || rawStatus === 'HD' || rawStatus === 'HALF DAY' || rawStatus === 'HALF_DAY') {
+        if (
+          rawStatus === 'HALFDAY' ||
+          rawStatus === 'HD' ||
+          rawStatus === 'HALF DAY' ||
+          rawStatus === 'HALF_DAY'
+        ) {
           status = 'HALFDAY';
           isHalfDay = true;
         } else if (rawStatus === 'ABSENT' || rawStatus === 'A') {
           status = 'ABSENT';
-        } else if (rawStatus === 'CASUAL_LEAVE' || rawStatus === 'CL' || rawStatus === 'LEAVE') {
+        } else if (
+          rawStatus === 'CASUAL_LEAVE' ||
+          rawStatus === 'CL' ||
+          rawStatus === 'LEAVE'
+        ) {
           status = 'ABSENT'; // Map leave to ABSENT in attendance status
         } else if (rawStatus === 'SICK_LEAVE' || rawStatus === 'SL') {
           status = 'ABSENT'; // Map leave to ABSENT in attendance status
         } else {
           status = 'PRESENT';
         }
+
+        // 1-Hour Allowed Break Policy: If break exceeds 60 minutes, the excess is flagged as NOT ALLOWED
+        const ALLOWED_BREAK_MINS = 60;
+        const excessBreakMins = Math.max(
+          0,
+          totalBreakMins - ALLOWED_BREAK_MINS,
+        );
+        const breakDeductionHours =
+          excessBreakMins > 0
+            ? parseFloat((excessBreakMins / 60).toFixed(2))
+            : 0;
+        const hasBreakComplaint = excessBreakMins > 0;
 
         const dataPayload = {
           checkIn: checkInDate,
@@ -908,13 +1127,26 @@ export class AttendanceRepository {
           totalWorkHours: workHours,
           otHours: isNaN(Number(rec.otHours)) ? 0 : Number(rec.otHours),
           lateHours: isNaN(Number(rec.lateHours)) ? 0 : Number(rec.lateHours),
-          earlyGoingHours: isNaN(Number(rec.earlyGoingHours)) ? 0 : Number(rec.earlyGoingHours),
-          presentDay: isHalfDay ? 0.5 : (isNaN(Number(rec.presentDay)) ? 1.0 : Number(rec.presentDay)),
+          earlyGoingHours: isNaN(Number(rec.earlyGoingHours))
+            ? 0
+            : Number(rec.earlyGoingHours),
+          presentDay: isHalfDay
+            ? 0.5
+            : isNaN(Number(rec.presentDay))
+              ? 1.0
+              : Number(rec.presentDay),
           isHalfDay,
           isSundayPresent: Boolean(rec.isSundayPresent ?? false),
           isFullNightPresent: Boolean(rec.isFullNightPresent ?? false),
           isHolidayPresent: Boolean(rec.isHolidayPresent ?? false),
-          captureMethod: rec.captureMethod || 'EXCEL_IMPORT',
+          captureMethod:
+            rec.captureMethod ||
+            (rawPunchesList.length > 2
+              ? 'BIOMETRIC_MULTI_PUNCH'
+              : 'EXCEL_IMPORT'),
+          breakMisuseMinutes: excessBreakMins,
+          breakDeductionHours: breakDeductionHours,
+          hasBreakComplaint: hasBreakComplaint,
         };
 
         const year = dateObj.getUTCFullYear();
@@ -952,7 +1184,11 @@ export class AttendanceRepository {
         results.successCount++;
       } catch (err: any) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: err.message || 'Save error' });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: err.message || 'Save error',
+        });
       }
     }
 
@@ -960,7 +1196,13 @@ export class AttendanceRepository {
   }
 
   // --- Break Misuse Incidents Repository Methods ---
-  async findManyBreakIncidents(query: PaginationQueryDto & { employeeId?: string; departmentId?: string; date?: string } = {}) {
+  async findManyBreakIncidents(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      departmentId?: string;
+      date?: string;
+    } = {},
+  ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -969,7 +1211,8 @@ export class AttendanceRepository {
       if ((this.prisma as any).breakMisuseIncident) {
         const where: any = {};
         if (query.employeeId) where.employeeId = query.employeeId;
-        if (query.departmentId) where.employee = { departmentId: query.departmentId };
+        if (query.departmentId)
+          where.employee = { departmentId: query.departmentId };
         if (query.date) where.incidentDate = new Date(query.date);
 
         const [total, data] = await Promise.all([
@@ -991,8 +1234,10 @@ export class AttendanceRepository {
     // Direct SQL fallback
     try {
       let whereClause = 'WHERE 1=1';
-      if (query.employeeId) whereClause += ` AND b."employeeId" = '${query.employeeId}'`;
-      if (query.date) whereClause += ` AND DATE(b."incidentDate") = DATE('${query.date}')`;
+      if (query.employeeId)
+        whereClause += ` AND b."employeeId" = '${query.employeeId}'`;
+      if (query.date)
+        whereClause += ` AND DATE(b."incidentDate") = DATE('${query.date}')`;
 
       const rows: any[] = await this.prisma.$queryRawUnsafe(`
         SELECT b.*, 
@@ -1043,7 +1288,9 @@ export class AttendanceRepository {
   async createBreakIncident(dto: any) {
     const incidentDate = new Date(dto.incidentDate || new Date());
     const excessMinutes = Number(dto.excessMinutes || 0);
-    const deductionHours = Number(dto.deductionHours || (excessMinutes / 60).toFixed(2));
+    const deductionHours = Number(
+      dto.deductionHours || (excessMinutes / 60).toFixed(2),
+    );
     const severity = dto.severity || 'WARNING';
 
     // 1. Check for existing attendance on that day
@@ -1126,15 +1373,26 @@ export class AttendanceRepository {
           )
         `);
       }
-      savedIncident = { id: generatedId, ...dto, incidentDate, excessMinutes, deductionHours, severity };
+      savedIncident = {
+        id: generatedId,
+        ...dto,
+        incidentDate,
+        excessMinutes,
+        deductionHours,
+        severity,
+      };
     }
 
     // 2. Adjust Attendance penalty
     if (attRecord) {
       const currentWorkHours = Number(attRecord.totalWorkHours || 8.0);
       const newWorkHours = Math.max(0, currentWorkHours - deductionHours);
-      const currentMisuseMins = Number((attRecord as any).breakMisuseMinutes || 0);
-      const currentDeductionHours = Number((attRecord as any).breakDeductionHours || 0);
+      const currentMisuseMins = Number(
+        (attRecord as any).breakMisuseMinutes || 0,
+      );
+      const currentDeductionHours = Number(
+        (attRecord as any).breakDeductionHours || 0,
+      );
 
       const updateData: any = {
         totalWorkHours: newWorkHours,
@@ -1172,16 +1430,24 @@ export class AttendanceRepository {
     try {
       let incident: any = null;
       if ((this.prisma as any).breakMisuseIncident) {
-        incident = await (this.prisma as any).breakMisuseIncident.findUnique({ where: { id } });
+        incident = await (this.prisma as any).breakMisuseIncident.findUnique({
+          where: { id },
+        });
         if (incident) {
-          await (this.prisma as any).breakMisuseIncident.delete({ where: { id } });
+          await (this.prisma as any).breakMisuseIncident.delete({
+            where: { id },
+          });
         }
       }
       if (!incident) {
-        const rows: any[] = await this.prisma.$queryRawUnsafe(`SELECT * FROM "BreakMisuseIncident" WHERE "id" = '${id}'`);
+        const rows: any[] = await this.prisma.$queryRawUnsafe(
+          `SELECT * FROM "BreakMisuseIncident" WHERE "id" = '${id}'`,
+        );
         incident = rows[0];
         if (incident) {
-          await this.prisma.$executeRawUnsafe(`DELETE FROM "BreakMisuseIncident" WHERE "id" = '${id}'`);
+          await this.prisma.$executeRawUnsafe(
+            `DELETE FROM "BreakMisuseIncident" WHERE "id" = '${id}'`,
+          );
         }
       }
 
@@ -1205,4 +1471,3 @@ export class AttendanceRepository {
     }
   }
 }
-

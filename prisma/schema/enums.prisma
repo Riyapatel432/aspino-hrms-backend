@@ -34,6 +34,20 @@ enum RequisitionType {
   REPLACEMENT
 }
 
+enum CnvStatus {
+  NOT_APPLICABLE
+  PENDING_NOTIFICATION
+  NOTIFIED
+  ACKNOWLEDGED
+}
+
+enum CnvSubmissionMode {
+  ONLINE_PORTAL
+  EMAIL
+  PHYSICAL
+  OTHER
+}
+
 enum CandidateStatus {
   SOURCED
   INTERVIEWING

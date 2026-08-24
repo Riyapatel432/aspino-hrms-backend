@@ -6,7 +6,7 @@ import { buildEmployeeSearchConditions } from '../../../common/utils/search.util
 
 @Injectable()
 export class ExitRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyExits(
     query: PaginationQueryDto & { status?: string; type?: string } = {},
@@ -20,7 +20,9 @@ export class ExitRepository {
       const empConds = buildEmployeeSearchConditions(query.search);
       const searchUpper = query.search.toUpperCase().trim();
       const isValidType = Object.values(ExitType).includes(searchUpper as any);
-      const isValidStatus = Object.values(ExitStatus).includes(searchUpper as any);
+      const isValidStatus = Object.values(ExitStatus).includes(
+        searchUpper as any,
+      );
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { reason: { contains: query.search, mode: 'insensitive' } },
@@ -35,7 +37,12 @@ export class ExitRepository {
       where.type = query.type as ExitType;
     }
 
-    const allowedExitSortFields = ['resignationDate', 'lastWorkingDay', 'type', 'status'];
+    const allowedExitSortFields = [
+      'resignationDate',
+      'lastWorkingDay',
+      'type',
+      'status',
+    ];
     const orderBy: any = {};
     if (query.sortBy && allowedExitSortFields.includes(query.sortBy)) {
       orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();

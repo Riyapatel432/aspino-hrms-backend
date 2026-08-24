@@ -42,7 +42,7 @@ export class AttendanceService {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getShifts(query: PaginationQueryDto = {}) {
     const res = await this.attendanceRepository.findManyShifts(query);
@@ -66,7 +66,7 @@ export class AttendanceService {
     if (existing) {
       throw new ConflictException('A shift with this name already exists.');
     }
-    return this.attendanceRepository.createShift(dto as any);
+    return this.attendanceRepository.createShift(dto);
   }
 
   async updateShift(id: string, dto: UpdateShiftDto) {
@@ -164,7 +164,15 @@ export class AttendanceService {
     return this.attendanceRepository.deleteRoster(id);
   }
 
-  async getAttendance(query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string; month?: string | number; year?: string | number } = {}) {
+  async getAttendance(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      status?: string;
+      date?: string;
+      month?: string | number;
+      year?: string | number;
+    } = {},
+  ) {
     const res = await this.attendanceRepository.findManyAttendance(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -204,7 +212,13 @@ export class AttendanceService {
   }
 
   // --- Break Misuse Incidents ---
-  async getBreakIncidents(query: PaginationQueryDto & { employeeId?: string; departmentId?: string; date?: string } = {}) {
+  async getBreakIncidents(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      departmentId?: string;
+      date?: string;
+    } = {},
+  ) {
     const res = await this.attendanceRepository.findManyBreakIncidents(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }

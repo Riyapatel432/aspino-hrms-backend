@@ -22,7 +22,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class LeaveController {
-  constructor(private readonly leaveService: LeaveService) { }
+  constructor(private readonly leaveService: LeaveService) {}
 
   @Get('holidays')
   async getHolidays(@Query() query: PaginationQueryDto) {
@@ -45,7 +45,10 @@ export class LeaveController {
   }
 
   @Get('leaves')
-  async getLeaveApplications(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string }) {
+  async getLeaveApplications(
+    @Query()
+    query: PaginationQueryDto & { employeeId?: string; status?: string },
+  ) {
     return this.leaveService.getLeaveApplications(query);
   }
 
@@ -74,7 +77,10 @@ export class LeaveController {
 
   // --- Department Leave Master ---
   @Get('leave-master')
-  async getLeaveMasters(@Query() query: PaginationQueryDto & { department?: string; fiscalYear?: string }) {
+  async getLeaveMasters(
+    @Query()
+    query: PaginationQueryDto & { department?: string; fiscalYear?: string },
+  ) {
     return this.leaveService.getLeaveMasters(query);
   }
 

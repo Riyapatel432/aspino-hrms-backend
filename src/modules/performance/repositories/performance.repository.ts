@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma, AppraisalCycleStatus, GoalStatus, AppraisalReviewStatus } from '@prisma/client';
+import {
+  Prisma,
+  AppraisalCycleStatus,
+  GoalStatus,
+  AppraisalReviewStatus,
+} from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
 
 @Injectable()
 export class PerformanceRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyCycles(query: PaginationQueryDto & { status?: string } = {}) {
     const page = Number(query.page) || 1;
@@ -15,9 +20,7 @@ export class PerformanceRepository {
 
     const where: Prisma.AppraisalCycleWhereInput = {};
     if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-      ];
+      where.OR = [{ name: { contains: query.search, mode: 'insensitive' } }];
     }
     if (query.status && query.status !== 'ALL') {
       where.status = query.status as AppraisalCycleStatus;
@@ -69,7 +72,11 @@ export class PerformanceRepository {
   }
 
   async findManyGoals(
-    query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {},
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    } = {},
   ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -147,7 +154,11 @@ export class PerformanceRepository {
   }
 
   async findManyReviews(
-    query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {},
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    } = {},
   ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -173,7 +184,12 @@ export class PerformanceRepository {
       where.status = query.status as AppraisalReviewStatus;
     }
 
-    const allowedReviewSortFields = ['selfRating', 'managerRating', 'finalRating', 'status'];
+    const allowedReviewSortFields = [
+      'selfRating',
+      'managerRating',
+      'finalRating',
+      'status',
+    ];
     const orderBy: any = {};
     if (query.sortBy && allowedReviewSortFields.includes(query.sortBy)) {
       orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();

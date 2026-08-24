@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  NotFoundException,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Param, NotFoundException, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { PrismaService } from '../../../database/prisma/prisma.service';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -78,7 +72,9 @@ export class EmployeesController {
     @Param('qrToken') qrToken: string,
     @Res({ passthrough: false }) res: Response,
   ) {
-    const cleanToken = qrToken.endsWith('.pdf') ? qrToken.slice(0, -4) : qrToken;
+    const cleanToken = qrToken.endsWith('.pdf')
+      ? qrToken.slice(0, -4)
+      : qrToken;
     const { employee, photoUrl } = await this.resolveEmployee(cleanToken);
 
     const fullName = `${employee.firstName} ${employee.lastName}`;
@@ -127,10 +123,15 @@ export class EmployeesController {
     doc.rect(0, 65, W, 3).fill('#10b981');
 
     // ── Header Logo ────────────────────────────────────────────────────────
-    const logoPath = 'd:\\Aspino-Hrms\\nextjs-aspino-hrms\\public\\aspino-logo.png';
+    const logoPath =
+      'd:\\Aspino-Hrms\\nextjs-aspino-hrms\\public\\aspino-logo.png';
     if (fs.existsSync(logoPath)) {
       try {
-        doc.image(logoPath, W / 2 - 50, 14, { fit: [100, 36], align: 'center', valign: 'center' });
+        doc.image(logoPath, W / 2 - 50, 14, {
+          fit: [100, 36],
+          align: 'center',
+          valign: 'center',
+        });
       } catch (err) {
         doc
           .fillColor('#10b981')
@@ -152,14 +153,10 @@ export class EmployeesController {
     const avatarR = 32;
 
     // Draw outer emerald green ring
-    doc
-      .circle(W / 2, avatarY + avatarR, avatarR + 2)
-      .fill('#10b981');
+    doc.circle(W / 2, avatarY + avatarR, avatarR + 2).fill('#10b981');
 
     // Draw inner white border ring
-    doc
-      .circle(W / 2, avatarY + avatarR, avatarR)
-      .fill('#ffffff');
+    doc.circle(W / 2, avatarY + avatarR, avatarR).fill('#ffffff');
 
     // Try to embed photo
     let photoEmbedded = false;
@@ -185,11 +182,10 @@ export class EmployeesController {
 
     // Initials fallback
     if (!photoEmbedded) {
-      doc
-        .circle(W / 2, avatarY + avatarR, avatarR - 2)
-        .fill('#1e293b');
+      doc.circle(W / 2, avatarY + avatarR, avatarR - 2).fill('#1e293b');
 
-      const initials = `${employee.firstName[0] ?? ''}${employee.lastName[0] ?? ''}`.toUpperCase();
+      const initials =
+        `${employee.firstName[0] ?? ''}${employee.lastName[0] ?? ''}`.toUpperCase();
       doc
         .fillColor('#ffffff')
         .font('Helvetica-Bold')
@@ -211,7 +207,10 @@ export class EmployeesController {
       .fillColor('#10b981')
       .font('Helvetica-Bold')
       .fontSize(7.5)
-      .text(employee.designation.toUpperCase(), 0, 166, { align: 'center', width: W });
+      .text(employee.designation.toUpperCase(), 0, 166, {
+        align: 'center',
+        width: W,
+      });
 
     // Small centered design line accent under designation
     doc.rect(W / 2 - 12, 177, 24, 1.2).fill('#e2e8f0');
@@ -222,25 +221,35 @@ export class EmployeesController {
         .fillColor('#94a3b8')
         .font('Helvetica-Bold')
         .fontSize(6)
-        .text(label, 30, yPos, { width: 65, align: 'left' });
+        .text(label, 26, yPos, { width: 56, align: 'left', lineBreak: false });
 
       doc
         .fillColor('#0b1329')
         .font('Helvetica-Bold')
-        .fontSize(7)
-        .text(val || '—', 95, yPos, { width: 95, align: 'left', ellipsis: true });
+        .fontSize(6.5)
+        .text(val || '—', 82, yPos, {
+          width: 112,
+          align: 'left',
+          ellipsis: true,
+          lineBreak: false,
+          height: 10,
+        });
 
       // Thin separator line
       doc
-        .moveTo(30, yPos + 10)
-        .lineTo(190, yPos + 10)
+        .moveTo(26, yPos + 10)
+        .lineTo(194, yPos + 10)
         .strokeColor('#f1f5f9')
         .lineWidth(0.5)
         .stroke();
     };
 
     drawField('EMPLOYEE ID', employee.employeeId, 185);
-    drawField('DEPARTMENT', (employee.department?.name || '').toUpperCase(), 199);
+    drawField(
+      'DEPARTMENT',
+      (employee.department?.name || '').toUpperCase(),
+      199,
+    );
     drawField('JOIN DATE', joinDate, 213);
     drawField('LOCATION', (employee.location || '—').toUpperCase(), 227);
     drawField('PHONE', employee.phone || '—', 241);
@@ -258,19 +267,28 @@ export class EmployeesController {
       .fillColor('#10b981')
       .font('Helvetica-Bold')
       .fontSize(6.5)
-      .text('✓ VERIFIED DIGITAL ID', 0, footerY + 14, { align: 'center', width: W });
+      .text('✓ VERIFIED DIGITAL ID', 0, footerY + 14, {
+        align: 'center',
+        width: W,
+      });
 
     doc
       .fillColor('#94a3b8')
       .font('Helvetica')
       .fontSize(5.5)
-      .text('SCAN QR CODE TO VALIDATE STATUS', 0, footerY + 24, { align: 'center', width: W });
+      .text('SCAN QR CODE TO VALIDATE STATUS', 0, footerY + 24, {
+        align: 'center',
+        width: W,
+      });
 
     doc
       .fillColor('#64748b')
       .font('Helvetica')
       .fontSize(5)
-      .text(`ISSUED ON: ${new Date().toLocaleDateString()}`, 0, footerY + 34, { align: 'center', width: W });
+      .text(`ISSUED ON: ${new Date().toLocaleDateString()}`, 0, footerY + 34, {
+        align: 'center',
+        width: W,
+      });
 
     // Outer rounded plastic card border overlay
     doc

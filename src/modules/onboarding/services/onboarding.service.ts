@@ -10,15 +10,20 @@ export class OnboardingService {
   constructor(
     private readonly onboardingRepository: OnboardingRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
-  async getEmployees(query: PaginationQueryDto & { status?: string; department?: string } = {}) {
+  async getEmployees(
+    query: PaginationQueryDto & { status?: string; department?: string } = {},
+  ) {
     const res = await this.onboardingRepository.findManyEmployees(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async getBanks() {
-    return this.prisma.bank.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    return this.prisma.bank.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async updateDocumentStatus(id: string, status: string) {

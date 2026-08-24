@@ -27,7 +27,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr', 'hod', 'admin')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) { }
+  constructor(private readonly attendanceService: AttendanceService) {}
 
   @Get('shifts')
   async getShifts(@Query() query: PaginationQueryDto) {
@@ -129,7 +129,17 @@ export class AttendanceController {
   }
 
   @Get('attendance')
-  async getAttendance(@Query() query: PaginationQueryDto & { employeeId?: string; status?: string; date?: string; month?: string; year?: string; departmentId?: string }) {
+  async getAttendance(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      status?: string;
+      date?: string;
+      month?: string;
+      year?: string;
+      departmentId?: string;
+    },
+  ) {
     return this.attendanceService.getAttendance(query);
   }
 
@@ -140,22 +150,20 @@ export class AttendanceController {
 
   @Post('attendance/bulk-import')
   async bulkImportAttendance(@Body() body: { records: any[] }) {
-    const records = Array.isArray(body) ? body : (body?.records || []);
+    const records = Array.isArray(body) ? body : body?.records || [];
     return this.attendanceService.bulkImportAttendance(records);
   }
 
   @Get('attendance/template')
   async getAttendanceTemplate(@Res() res: any) {
-    const csvContent = [
-      'Employee Code / ID,Date (YYYY-MM-DD),Shift Name (Morning/Evening/Night/General),Check In (HH:mm),Check Out (HH:mm),Status (PRESENT/ABSENT/HALFDAY/LATE),OT Hours,Late Hours,Early Going Hours,Present Day',
-      'aspino_2026_001,2026-08-01,Morning Shift,08:00,16:30,PRESENT,0,0,0,1.0',
-      'aspino_2026_002,2026-08-01,Morning Shift,08:15,16:30,LATE,0,0.25,0,1.0',
-      'aspino_2026_003,2026-08-01,Evening Shift,14:00,22:30,PRESENT,0,0,0,1.0',
-      'aspino_2026_004,2026-08-01,General Shift,09:00,17:30,PRESENT,0,0,0,1.0',
-    ].join('\n');
+    const csvContent =
+      'Employee Code / ID,Date (YYYY-MM-DD),Shift Name,In 1 (Check In),Out 1 (Lunch Out),In 2 (Lunch In),Out 2 (Day Out),In 3,Out 3,Status,OT Hours\n';
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="attendance_import_template.csv"');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="attendance_import_template.csv"',
+    );
     return res.send(csvContent);
   }
 
@@ -171,7 +179,14 @@ export class AttendanceController {
 
   // --- Break Misuse Incident Endpoints (Subjective HOD Complaints) ---
   @Get('break-incidents')
-  async getBreakIncidents(@Query() query: PaginationQueryDto & { employeeId?: string; departmentId?: string; date?: string }) {
+  async getBreakIncidents(
+    @Query()
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      departmentId?: string;
+      date?: string;
+    },
+  ) {
     return this.attendanceService.getBreakIncidents(query);
   }
 
@@ -185,4 +200,3 @@ export class AttendanceController {
     return this.attendanceService.deleteBreakIncident(id);
   }
 }
-

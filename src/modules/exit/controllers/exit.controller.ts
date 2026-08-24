@@ -21,10 +21,12 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class ExitController {
-  constructor(private readonly exitService: ExitService) { }
+  constructor(private readonly exitService: ExitService) {}
 
   @Get('exits')
-  async getExits(@Query() query: PaginationQueryDto & { status?: string; type?: string }) {
+  async getExits(
+    @Query() query: PaginationQueryDto & { status?: string; type?: string },
+  ) {
     return this.exitService.getExits(query);
   }
 

@@ -14,7 +14,9 @@ export class CreateCandidateDto {
   @MinLength(2, { message: 'Name must be at least 2 characters.' })
   name: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase().trim() : value,
+  )
   @IsEmail({}, { message: 'Please provide a valid email address.' })
   @IsNotEmpty({ message: 'Email address is required.' })
   email: string;

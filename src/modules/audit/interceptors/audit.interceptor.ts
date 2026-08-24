@@ -9,7 +9,10 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AuditService } from '../services/audit.service';
-import { LOG_ACTIVITY_KEY, LogActivityOptions } from '../decorators/log-activity.decorator';
+import {
+  LOG_ACTIVITY_KEY,
+  LogActivityOptions,
+} from '../decorators/log-activity.decorator';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -18,7 +21,7 @@ export class AuditInterceptor implements NestInterceptor {
   constructor(
     private readonly auditService: AuditService,
     private readonly reflector: Reflector,
-  ) { }
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -42,11 +45,21 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: (responseBody) => {
-          this.logEvent(request, responseBody, context.switchToHttp().getResponse().statusCode, decoratorOptions);
+          this.logEvent(
+            request,
+            responseBody,
+            context.switchToHttp().getResponse().statusCode,
+            decoratorOptions,
+          );
         },
         error: (error) => {
           const statusCode = error.status || 500;
-          this.logEvent(request, error.response || error.message, statusCode, decoratorOptions);
+          this.logEvent(
+            request,
+            error.response || error.message,
+            statusCode,
+            decoratorOptions,
+          );
         },
       }),
     );
@@ -77,7 +90,13 @@ export class AuditInterceptor implements NestInterceptor {
         userRole = request.user.role || null;
       }
       // If it was a successful login, extract user details from the response body
-      else if (url.includes('/auth/login') && responseBody && responseBody.user && statusCode >= 200 && statusCode < 300) {
+      else if (
+        url.includes('/auth/login') &&
+        responseBody &&
+        responseBody.user &&
+        statusCode >= 200 &&
+        statusCode < 300
+      ) {
         const u = responseBody.user;
         userId = u.id || null;
         userEmail = u.email || null;
@@ -136,7 +155,10 @@ export class AuditInterceptor implements NestInterceptor {
         responseBody: sanitizedResponseBody || {},
       });
     } catch (err) {
-      this.logger.error(`Error processing activity log entry: ${(err as Error).message}`, (err as Error).stack);
+      this.logger.error(
+        `Error processing activity log entry: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
     }
   }
 
@@ -149,7 +171,7 @@ export class AuditInterceptor implements NestInterceptor {
     if (obj instanceof Date) return obj;
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.sanitize(item));
+      return obj.map((item) => this.sanitize(item));
     }
 
     const scrubbed: any = {};
@@ -161,7 +183,7 @@ export class AuditInterceptor implements NestInterceptor {
       'accesstoken',
       'access_token',
       'client_secret',
-      'secret'
+      'secret',
     ];
 
     for (const [key, value] of Object.entries(obj)) {
@@ -179,7 +201,10 @@ export class AuditInterceptor implements NestInterceptor {
   /**
    * Generates a fallback human-readable action name based on route and HTTP method
    */
-  private getFallbackAction(method: string, url: string): { action: string; entityType: string } {
+  private getFallbackAction(
+    method: string,
+    url: string,
+  ): { action: string; entityType: string } {
     const path = url.split('?')[0];
     const parts = path.split('/').filter(Boolean);
 
@@ -187,8 +212,10 @@ export class AuditInterceptor implements NestInterceptor {
     if (parts.length > 0) {
       const last = parts[parts.length - 1];
       // Check if last element is a parameter/id
-      const isId = last.includes('-') || !isNaN(Number(last)) || last.length > 20;
-      const entityPart = isId && parts.length > 1 ? parts[parts.length - 2] : last;
+      const isId =
+        last.includes('-') || !isNaN(Number(last)) || last.length > 20;
+      const entityPart =
+        isId && parts.length > 1 ? parts[parts.length - 2] : last;
 
       rawEntity = entityPart
         .replace(/-./g, (match) => match[1].toUpperCase())
@@ -220,7 +247,10 @@ export class AuditInterceptor implements NestInterceptor {
   private getClientIp(request: any): string {
     const forwardedFor = request.headers['x-forwarded-for'];
     if (forwardedFor) {
-      const ips = typeof forwardedFor === 'string' ? forwardedFor.split(',') : forwardedFor;
+      const ips =
+        typeof forwardedFor === 'string'
+          ? forwardedFor.split(',')
+          : forwardedFor;
       if (ips.length > 0) {
         const rawIp = ips[0].trim();
         return rawIp === '::1' ? '127.0.0.1' : rawIp;

@@ -8,13 +8,28 @@ export class PayrollRepository {
 
   // Salary Structure
   async upsertSalaryStructure(data: any) {
-    const { bankId, accountNumber, ifscCode, panNumber, month, year, ...structData } = data;
+    const {
+      bankId,
+      accountNumber,
+      ifscCode,
+      panNumber,
+      month,
+      year,
+      ...structData
+    } = data;
 
-    if (bankId !== undefined || accountNumber !== undefined || ifscCode !== undefined || panNumber !== undefined) {
+    if (
+      bankId !== undefined ||
+      accountNumber !== undefined ||
+      ifscCode !== undefined ||
+      panNumber !== undefined
+    ) {
       await this.prisma.employee.update({
         where: { id: data.employeeId },
         data: {
-          ...(bankId !== undefined ? { bankId: bankId ? Number(bankId) : null } : {}),
+          ...(bankId !== undefined
+            ? { bankId: bankId ? Number(bankId) : null }
+            : {}),
           ...(accountNumber !== undefined ? { accountNumber } : {}),
           ...(ifscCode !== undefined ? { ifscCode } : {}),
           ...(panNumber !== undefined ? { panNumber } : {}),
@@ -22,8 +37,16 @@ export class PayrollRepository {
       });
     }
 
-    const m = month ? Number(month) : (data.effectiveFrom ? new Date(data.effectiveFrom).getMonth() + 1 : new Date().getMonth() + 1);
-    const y = year ? Number(year) : (data.effectiveFrom ? new Date(data.effectiveFrom).getFullYear() : new Date().getFullYear());
+    const m = month
+      ? Number(month)
+      : data.effectiveFrom
+        ? new Date(data.effectiveFrom).getMonth() + 1
+        : new Date().getMonth() + 1;
+    const y = year
+      ? Number(year)
+      : data.effectiveFrom
+        ? new Date(data.effectiveFrom).getFullYear()
+        : new Date().getFullYear();
 
     const { employeeId, ...updateData } = structData;
 
@@ -49,8 +72,12 @@ export class PayrollRepository {
     });
   }
 
-  async getSalaryStructureByEmployee(employeeId: string, month?: number, year?: number) {
-    const m = month || (new Date().getMonth() + 1);
+  async getSalaryStructureByEmployee(
+    employeeId: string,
+    month?: number,
+    year?: number,
+  ) {
+    const m = month || new Date().getMonth() + 1;
     const y = year || new Date().getFullYear();
 
     const struct = await this.prisma.salaryStructure.findUnique({
@@ -73,15 +100,22 @@ export class PayrollRepository {
     });
   }
 
-  async getAllSalaryStructures(page = 1, limit = 10, search = '', month?: number, year?: number, distinctEmployees?: boolean) {
+  async getAllSalaryStructures(
+    page = 1,
+    limit = 10,
+    search = '',
+    month?: number,
+    year?: number,
+    distinctEmployees?: boolean,
+  ) {
     const skip = (page - 1) * limit;
-    
+
     const andConditions: any[] = [];
     if (search && typeof search === 'string') {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         andConditions.push({
           employee: {
             OR: [
@@ -140,10 +174,12 @@ export class PayrollRepository {
     const [data, total] = await Promise.all([
       this.prisma.salaryStructure.findMany(findOptions),
       distinctEmployees
-        ? this.prisma.salaryStructure.groupBy({
-            by: ['employeeId'],
-            where: whereClause,
-          }).then((res) => res.length)
+        ? this.prisma.salaryStructure
+            .groupBy({
+              by: ['employeeId'],
+              where: whereClause,
+            })
+            .then((res) => res.length)
         : this.prisma.salaryStructure.count({ where: whereClause }),
     ]);
 
@@ -176,7 +212,14 @@ export class PayrollRepository {
     });
   }
 
-  async getRentReceipts(page = 1, limit = 10, search = '', month?: number, year?: number, employeeId?: string) {
+  async getRentReceipts(
+    page = 1,
+    limit = 10,
+    search = '',
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
     const skip = (page - 1) * limit;
     const andConditions: any[] = [];
 
@@ -188,7 +231,7 @@ export class PayrollRepository {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         andConditions.push({
           OR: [
             {
@@ -196,14 +239,20 @@ export class PayrollRepository {
                 OR: [
                   {
                     AND: [
-                      { firstName: { contains: firstPart, mode: 'insensitive' } },
+                      {
+                        firstName: { contains: firstPart, mode: 'insensitive' },
+                      },
                       { lastName: { contains: lastPart, mode: 'insensitive' } },
                     ],
                   },
                   {
                     AND: [
-                      { firstName: { contains: lastPart, mode: 'insensitive' } },
-                      { lastName: { contains: firstPart, mode: 'insensitive' } },
+                      {
+                        firstName: { contains: lastPart, mode: 'insensitive' },
+                      },
+                      {
+                        lastName: { contains: firstPart, mode: 'insensitive' },
+                      },
                     ],
                   },
                   { firstName: { contains: search, mode: 'insensitive' } },
@@ -259,7 +308,12 @@ export class PayrollRepository {
     return { data, total, page: Number(page), limit: Number(limit) };
   }
 
-  async updateRentReceiptStatus(id: string, status: string, verifiedBy?: string, calculatedExemption?: number) {
+  async updateRentReceiptStatus(
+    id: string,
+    status: string,
+    verifiedBy?: string,
+    calculatedExemption?: number,
+  ) {
     return this.prisma.hraRentReceipt.update({
       where: { id },
       data: {
@@ -312,7 +366,15 @@ export class PayrollRepository {
     });
   }
 
-  async getTaxDeclarations(page = 1, limit = 10, search = '', financialYear?: string, employeeId?: string, month?: number, year?: number) {
+  async getTaxDeclarations(
+    page = 1,
+    limit = 10,
+    search = '',
+    financialYear?: string,
+    employeeId?: string,
+    month?: number,
+    year?: number,
+  ) {
     const skip = (page - 1) * limit;
     const andConditions: any[] = [];
 
@@ -329,7 +391,7 @@ export class PayrollRepository {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         andConditions.push({
           employee: {
             OR: [
@@ -398,7 +460,14 @@ export class PayrollRepository {
     });
   }
 
-  async getActiveLoans(page = 1, limit = 10, search = '', month?: number, year?: number, employeeId?: string) {
+  async getActiveLoans(
+    page = 1,
+    limit = 10,
+    search = '',
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
     const skip = (page - 1) * limit;
     const andConditions: any[] = [];
 
@@ -412,7 +481,7 @@ export class PayrollRepository {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         andConditions.push({
           employee: {
             OR: [
@@ -474,7 +543,9 @@ export class PayrollRepository {
   }
 
   async updateLoanBalance(loanId: string, recoveredAmount: number) {
-    const loan = await this.prisma.employeeLoan.findUnique({ where: { id: loanId } });
+    const loan = await this.prisma.employeeLoan.findUnique({
+      where: { id: loanId },
+    });
     if (!loan) return null;
 
     const newBalance = Math.max(0, loan.balanceRemaining - recoveredAmount);
@@ -497,11 +568,30 @@ export class PayrollRepository {
     });
   }
 
-  async createOrUpdatePayrollRun(month: number, year: number, status: string, totalEmployees: number, totalGross: number, totalNet: number) {
+  async createOrUpdatePayrollRun(
+    month: number,
+    year: number,
+    status: string,
+    totalEmployees: number,
+    totalGross: number,
+    totalNet: number,
+  ) {
     return this.prisma.payrollRun.upsert({
       where: { month_year: { month, year } },
-      create: { month, year, status: status as PayrollStatus, totalEmployees, totalGross, totalNet },
-      update: { status: status as PayrollStatus, totalEmployees, totalGross, totalNet },
+      create: {
+        month,
+        year,
+        status: status as PayrollStatus,
+        totalEmployees,
+        totalGross,
+        totalNet,
+      },
+      update: {
+        status: status as PayrollStatus,
+        totalEmployees,
+        totalGross,
+        totalNet,
+      },
     });
   }
 
@@ -528,7 +618,14 @@ export class PayrollRepository {
     });
   }
 
-  async getPayslips(page = 1, limit = 10, search = '', month?: number, year?: number, employeeId?: string) {
+  async getPayslips(
+    page = 1,
+    limit = 10,
+    search = '',
+    month?: number,
+    year?: number,
+    employeeId?: string,
+  ) {
     const skip = (page - 1) * limit;
     const andConditions: any[] = [];
 
@@ -546,7 +643,7 @@ export class PayrollRepository {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         andConditions.push({
           employee: {
             OR: [
@@ -607,7 +704,9 @@ export class PayrollRepository {
   // Active Direct Employees for Payroll
   async getDirectEmployeesForPayroll() {
     return this.prisma.employee.findMany({
-      where: { status: { in: ['ACTIVE', 'ONBOARDING', 'EXITING', 'RELIEVED'] } },
+      where: {
+        status: { in: ['ACTIVE', 'ONBOARDING', 'EXITING', 'RELIEVED'] },
+      },
       include: {
         salaryStructures: true,
         loans: { where: { status: 'ACTIVE' } },
@@ -616,41 +715,58 @@ export class PayrollRepository {
     });
   }
 
-  async bulkImportSalaryStructures(records: Array<{
-    employeeCodeOrId: string;
-    basicSalary: number;
-    hraAmount?: number;
-    da?: number;
-    conveyance?: number;
-    specialAllowance?: number;
-    statutoryBonus?: number;
-    reimbursements?: number;
-    grossSalary?: number;
-    pfAmount?: number;
-    esiAmount?: number;
-    ptAmount?: number;
-    taxRegime?: string;
-    bankName?: string;
-    accountNumber?: string;
-    ifscCode?: string;
-    panNumber?: string;
-  }>) {
+  async bulkImportSalaryStructures(
+    records: Array<{
+      employeeCodeOrId: string;
+      basicSalary: number;
+      hraAmount?: number;
+      da?: number;
+      conveyance?: number;
+      specialAllowance?: number;
+      statutoryBonus?: number;
+      reimbursements?: number;
+      grossSalary?: number;
+      pfAmount?: number;
+      esiAmount?: number;
+      ptAmount?: number;
+      taxRegime?: string;
+      bankName?: string;
+      accountNumber?: string;
+      ifscCode?: string;
+      panNumber?: string;
+    }>,
+  ) {
     const results = {
       total: records.length,
       successCount: 0,
       failureCount: 0,
-      errors: [] as Array<{ row: number; employeeCodeOrId: string; error: string }>,
+      errors: [] as Array<{
+        row: number;
+        employeeCodeOrId: string;
+        error: string;
+      }>,
     };
 
     const [allEmployees, allBanks] = await Promise.all([
       this.prisma.employee.findMany({
-        select: { id: true, employeeId: true, firstName: true, lastName: true, email: true },
+        select: {
+          id: true,
+          employeeId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
       }),
       this.prisma.bank.findMany({ where: { isActive: true } }),
     ]);
     const empMap = new Map<string, string>();
-    const normalize = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '');
-    const normalizeStripZeros = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '').replace(/0+(?=\d)/g, '');
+    const normalize = (str: string) =>
+      (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const normalizeStripZeros = (str: string) =>
+      (str || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/gi, '')
+        .replace(/0+(?=\d)/g, '');
 
     allEmployees.forEach((emp) => {
       empMap.set(emp.id.toLowerCase(), emp.id);
@@ -678,20 +794,29 @@ export class PayrollRepository {
 
       if (!rawCode) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: 'Employee ID or Code is missing' });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: 'Employee ID or Code is missing',
+        });
         continue;
       }
 
-      let empId = empMap.get(rawCode.toLowerCase()) || 
-                  empMap.get(normalize(rawCode)) || 
-                  empMap.get(normalizeStripZeros(rawCode));
+      let empId =
+        empMap.get(rawCode.toLowerCase()) ||
+        empMap.get(normalize(rawCode)) ||
+        empMap.get(normalizeStripZeros(rawCode));
 
       if (!empId) {
         const normRaw = normalize(rawCode);
         if (normRaw && normRaw.length > 2) {
-          const match = allEmployees.find(e => {
+          const match = allEmployees.find((e) => {
             const normEmpId = normalize(e.employeeId);
-            return normEmpId && normEmpId.length > 2 && (normEmpId.includes(normRaw) || normRaw.includes(normEmpId));
+            return (
+              normEmpId &&
+              normEmpId.length > 2 &&
+              (normEmpId.includes(normRaw) || normRaw.includes(normEmpId))
+            );
           });
           if (match) empId = match.id;
         }
@@ -699,14 +824,22 @@ export class PayrollRepository {
 
       if (!empId) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rawCode, error: `Employee not found for code/ID/Name "${rawCode}"` });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rawCode,
+          error: `Employee not found for code/ID/Name "${rawCode}"`,
+        });
         continue;
       }
 
       const basic = Number(rec.basicSalary || 0);
       if (basic <= 0) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rec.employeeCodeOrId, error: 'Basic salary must be greater than 0' });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rec.employeeCodeOrId,
+          error: 'Basic salary must be greater than 0',
+        });
         continue;
       }
 
@@ -721,8 +854,12 @@ export class PayrollRepository {
         const gross = Number(rec.grossSalary ?? computedGross);
 
         const pf = Number(rec.pfAmount ?? Math.min(basic * 0.12, 1800));
-        const esi = Number(rec.esiAmount ?? (gross <= 21000 ? Math.round(gross * 0.0075) : 0));
-        const pt = Number(rec.ptAmount ?? (gross >= 20000 ? 200 : gross >= 15000 ? 150 : 0));
+        const esi = Number(
+          rec.esiAmount ?? (gross <= 21000 ? Math.round(gross * 0.0075) : 0),
+        );
+        const pt = Number(
+          rec.ptAmount ?? (gross >= 20000 ? 200 : gross >= 15000 ? 150 : 0),
+        );
         const regime = rec.taxRegime || 'NEW';
 
         const dataPayload = {
@@ -741,12 +878,19 @@ export class PayrollRepository {
           taxRegime: regime,
         };
 
-        if (rec.bankName || rec.accountNumber || rec.ifscCode || rec.panNumber) {
+        if (
+          rec.bankName ||
+          rec.accountNumber ||
+          rec.ifscCode ||
+          rec.panNumber
+        ) {
           let bId: number | undefined = undefined;
           let bName = rec.bankName;
 
           if (bName) {
-            const foundB = allBanks.find((b) => b.name.toLowerCase() === bName!.toLowerCase());
+            const foundB = allBanks.find(
+              (b) => b.name.toLowerCase() === bName!.toLowerCase(),
+            );
             if (foundB) {
               bId = foundB.id;
               bName = foundB.name;
@@ -757,7 +901,9 @@ export class PayrollRepository {
             where: { id: empId },
             data: {
               ...(bId !== undefined ? { bankId: bId } : {}),
-              ...(rec.accountNumber ? { accountNumber: rec.accountNumber } : {}),
+              ...(rec.accountNumber
+                ? { accountNumber: rec.accountNumber }
+                : {}),
               ...(rec.ifscCode ? { ifscCode: rec.ifscCode } : {}),
               ...(rec.panNumber ? { panNumber: rec.panNumber } : {}),
             },
@@ -769,7 +915,11 @@ export class PayrollRepository {
         results.successCount++;
       } catch (err: any) {
         results.failureCount++;
-        results.errors.push({ row: rowNum, employeeCodeOrId: rec.employeeCodeOrId, error: err.message || 'Save error' });
+        results.errors.push({
+          row: rowNum,
+          employeeCodeOrId: rec.employeeCodeOrId,
+          error: err.message || 'Save error',
+        });
       }
     }
 
@@ -777,7 +927,7 @@ export class PayrollRepository {
   }
 
   async getSalaryMatrixData(department?: string, search?: string) {
-    let empWhere: any = {};
+    const empWhere: any = {};
     if (department && department !== 'ALL') {
       empWhere.departmentId = department;
     }
@@ -785,7 +935,7 @@ export class PayrollRepository {
       const searchParts = search.trim().split(/\s+/).filter(Boolean);
       if (searchParts.length >= 2) {
         const firstPart = searchParts[0];
-        const lastPart = searchParts.slice(1).join(" ");
+        const lastPart = searchParts.slice(1).join(' ');
         empWhere.OR = [
           {
             AND: [
@@ -889,7 +1039,12 @@ export class PayrollRepository {
     return { successCount, total: records.length };
   }
 
-  async copyPreviousMonthSalaries(fromMonth?: number, fromYear?: number, toMonth?: number, toYear?: number) {
+  async copyPreviousMonthSalaries(
+    fromMonth?: number,
+    fromYear?: number,
+    toMonth?: number,
+    toYear?: number,
+  ) {
     const fMonth = fromMonth ? Number(fromMonth) : 6;
     const fYear = fromYear ? Number(fromYear) : new Date().getFullYear();
     const tMonth = toMonth ? Number(toMonth) : 7;
@@ -923,7 +1078,9 @@ export class PayrollRepository {
 
     // Fallback 2: If still empty, populate default structures for all employees
     if (sourceStructures.length === 0) {
-      const employees = await this.prisma.employee.findMany({ include: { bank: true } });
+      const employees = await this.prisma.employee.findMany({
+        include: { bank: true },
+      });
       for (const emp of employees) {
         await this.upsertSalaryStructure({
           employeeId: emp.id,

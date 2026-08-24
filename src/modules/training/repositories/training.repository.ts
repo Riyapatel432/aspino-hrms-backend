@@ -6,10 +6,13 @@ import { buildEmployeeSearchConditions } from '../../../common/utils/search.util
 
 @Injectable()
 export class TrainingRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyTrainings(
-    query: PaginationQueryDto & { employeeId?: string; trainingType?: string } = {},
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      trainingType?: string;
+    } = {},
   ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -19,11 +22,17 @@ export class TrainingRepository {
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
       const searchUpper = query.search.toUpperCase().trim();
-      const isValidStatus = Object.values(TrainingStatus).includes(searchUpper as any);
+      const isValidStatus = Object.values(TrainingStatus).includes(
+        searchUpper as any,
+      );
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { trainingName: { contains: query.search, mode: 'insensitive' } },
-        { trainingType: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          trainingType: {
+            name: { contains: query.search, mode: 'insensitive' },
+          },
+        },
         ...(isValidStatus ? [{ status: searchUpper as TrainingStatus }] : []),
       ];
     }
@@ -34,11 +43,19 @@ export class TrainingRepository {
       where.trainingTypeId = query.trainingType;
     }
 
-    const allowedTrainSortFields = ['trainingName', 'trainingType', 'completionDate', 'expiryDate', 'status'];
+    const allowedTrainSortFields = [
+      'trainingName',
+      'trainingType',
+      'completionDate',
+      'expiryDate',
+      'status',
+    ];
     const orderBy: any = {};
     if (query.sortBy && allowedTrainSortFields.includes(query.sortBy)) {
       if (query.sortBy === 'trainingType') {
-        orderBy.trainingType = { name: (query.sortOrder || 'desc').toLowerCase() };
+        orderBy.trainingType = {
+          name: (query.sortOrder || 'desc').toLowerCase(),
+        };
       } else {
         orderBy[query.sortBy] = (query.sortOrder || 'desc').toLowerCase();
       }

@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 
-export function buildEmployeeSearchConditions(search: string): Prisma.EmployeeWhereInput[] {
+export function buildEmployeeSearchConditions(
+  search: string,
+): Prisma.EmployeeWhereInput[] {
   const term = search.trim();
   if (!term) return [];
 

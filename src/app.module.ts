@@ -52,4 +52,4 @@ import { TrainingModule } from './modules/training/training.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

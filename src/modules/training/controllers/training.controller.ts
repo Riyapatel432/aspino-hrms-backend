@@ -20,10 +20,13 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('hr')
 export class TrainingController {
-  constructor(private readonly trainingService: TrainingService) { }
+  constructor(private readonly trainingService: TrainingService) {}
 
   @Get('trainings')
-  async getTrainings(@Query() query: PaginationQueryDto & { employeeId?: string; trainingType?: string }) {
+  async getTrainings(
+    @Query()
+    query: PaginationQueryDto & { employeeId?: string; trainingType?: string },
+  ) {
     return this.trainingService.getTrainings(query);
   }
 

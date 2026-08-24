@@ -46,37 +46,128 @@ export class PrismaService
 
       // Ensure all PostgreSQL Enum types exist
       await this.ensureEnum('GatePassType', ['INWARD', 'OUTWARD']);
-      await this.ensureEnum('GatePassStatus', ['GATE_IN', 'COMPLETED', 'CANCELLED']);
-      await this.ensureEnum('ProbationStatus', ['UNDER_REVIEW', 'CONFIRMED', 'EXTENDED']);
-      await this.ensureEnum('EmployeeStatus', ['ONBOARDING', 'ACTIVE', 'EXITING', 'RELIEVED']);
-      await this.ensureEnum('JobRequisitionStatus', ['PENDING', 'APPROVED', 'REJECTED', 'FULFILLED']);
-      await this.ensureEnum('CandidateStatus', ['SOURCED', 'INTERVIEWING', 'SELECTED', 'REJECTED', 'RE_INTERVIEW_ELIGIBLE', 'OFFERED', 'ACCEPTED']);
-      await this.ensureEnum('InterviewStatus', ['SCHEDULED', 'COMPLETED', 'CANCELLED']);
+      await this.ensureEnum('GatePassStatus', [
+        'GATE_IN',
+        'COMPLETED',
+        'CANCELLED',
+      ]);
+      await this.ensureEnum('ProbationStatus', [
+        'UNDER_REVIEW',
+        'CONFIRMED',
+        'EXTENDED',
+      ]);
+      await this.ensureEnum('EmployeeStatus', [
+        'ONBOARDING',
+        'ACTIVE',
+        'EXITING',
+        'RELIEVED',
+      ]);
+      await this.ensureEnum('JobRequisitionStatus', [
+        'PENDING',
+        'APPROVED',
+        'REJECTED',
+        'FULFILLED',
+      ]);
+      await this.ensureEnum('CandidateStatus', [
+        'SOURCED',
+        'INTERVIEWING',
+        'SELECTED',
+        'REJECTED',
+        'RE_INTERVIEW_ELIGIBLE',
+        'OFFERED',
+        'ACCEPTED',
+      ]);
+      await this.ensureEnum('InterviewStatus', [
+        'SCHEDULED',
+        'COMPLETED',
+        'CANCELLED',
+      ]);
       await this.ensureEnum('Recommendation', ['SELECT', 'REJECT', 'HOLD']);
-      await this.ensureEnum('OfferStatus', ['GENERATED', 'SENT', 'ACCEPTED', 'DECLINED']);
-      await this.ensureEnum('DocumentStatus', ['PENDING', 'SUBMITTED', 'VERIFIED', 'REJECTED']);
+      await this.ensureEnum('OfferStatus', [
+        'GENERATED',
+        'SENT',
+        'ACCEPTED',
+        'DECLINED',
+      ]);
+      await this.ensureEnum('DocumentStatus', [
+        'PENDING',
+        'SUBMITTED',
+        'VERIFIED',
+        'REJECTED',
+      ]);
       await this.ensureEnum('InductionStatus', ['SCHEDULED', 'COMPLETED']);
-      await this.ensureEnum('AttendanceStatus', ['PRESENT', 'ABSENT', 'LATE', 'HALFDAY', 'ON_LEAVE', 'HOLIDAY']);
-      await this.ensureEnum('LeaveStatus', ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']);
+      await this.ensureEnum('AttendanceStatus', [
+        'PRESENT',
+        'ABSENT',
+        'LATE',
+        'HALFDAY',
+        'ON_LEAVE',
+        'HOLIDAY',
+      ]);
+      await this.ensureEnum('LeaveStatus', [
+        'PENDING',
+        'APPROVED',
+        'REJECTED',
+        'CANCELLED',
+      ]);
       await this.ensureEnum('AppraisalCycleStatus', ['ACTIVE', 'CLOSED']);
       await this.ensureEnum('GoalStatus', ['PENDING', 'APPROVED', 'COMPLETED']);
-      await this.ensureEnum('AppraisalReviewStatus', ['DRAFT', 'SELF_REVIEW', 'MANAGER_REVIEW', 'COMPLETED']);
-      await this.ensureEnum('TrainingStatus', ['COMPLETED', 'EXPIRED', 'PENDING']);
+      await this.ensureEnum('AppraisalReviewStatus', [
+        'DRAFT',
+        'SELF_REVIEW',
+        'MANAGER_REVIEW',
+        'COMPLETED',
+      ]);
+      await this.ensureEnum('TrainingStatus', [
+        'COMPLETED',
+        'EXPIRED',
+        'PENDING',
+      ]);
       await this.ensureEnum('ExitType', ['RESIGNATION', 'TERMINATION']);
-      await this.ensureEnum('ExitStatus', ['INITIATED', 'CLEARANCE_IN_PROGRESS', 'SETTLED', 'COMPLETED']);
+      await this.ensureEnum('ExitStatus', [
+        'INITIATED',
+        'CLEARANCE_IN_PROGRESS',
+        'SETTLED',
+        'COMPLETED',
+      ]);
       await this.ensureEnum('ClearanceStatus', ['PENDING', 'CLEARED']);
       await this.ensureEnum('PaymentStatus', ['UNPAID', 'PAID']);
       await this.ensureEnum('TaxRegime', ['OLD', 'NEW']);
-      await this.ensureEnum('RentReceiptStatus', ['SUBMITTED', 'APPROVED', 'REJECTED']);
-      await this.ensureEnum('TaxDeclarationStatus', ['SUBMITTED', 'APPROVED', 'REJECTED']);
+      await this.ensureEnum('RentReceiptStatus', [
+        'SUBMITTED',
+        'APPROVED',
+        'REJECTED',
+      ]);
+      await this.ensureEnum('TaxDeclarationStatus', [
+        'SUBMITTED',
+        'APPROVED',
+        'REJECTED',
+      ]);
       await this.ensureEnum('LoanStatus', ['ACTIVE', 'PAID_OFF', 'CANCELLED']);
-      await this.ensureEnum('PayrollStatus', ['DRAFT', 'PREVIEW', 'APPROVED', 'PROCESSED']);
+      await this.ensureEnum('PayrollStatus', [
+        'DRAFT',
+        'PREVIEW',
+        'APPROVED',
+        'PROCESSED',
+      ]);
       await this.ensureEnum('PayslipStatus', ['GENERATED', 'PAID']);
+      await this.ensureEnum('CnvStatus', [
+        'NOT_APPLICABLE',
+        'PENDING_NOTIFICATION',
+        'NOTIFIED',
+        'ACKNOWLEDGED',
+      ]);
+      await this.ensureEnum('CnvSubmissionMode', [
+        'ONLINE_PORTAL',
+        'EMAIL',
+        'PHYSICAL',
+        'OTHER',
+      ]);
 
       // Ensure missing tables and columns exist in PostgreSQL database
       try {
         await this.$executeRawUnsafe(
-          `ALTER TABLE IF EXISTS "Department" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;`
+          `ALTER TABLE IF EXISTS "Department" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;`,
         );
         await this.$executeRawUnsafe(`
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;
@@ -90,7 +181,11 @@ export class PrismaService
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "panNumber" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "probationEnd" TIMESTAMP(3);
         `);
-        try { await this.$executeRawUnsafe(`ALTER TABLE IF EXISTS "Employee" ALTER COLUMN "department" DROP NOT NULL;`); } catch(e) {}
+        try {
+          await this.$executeRawUnsafe(
+            `ALTER TABLE IF EXISTS "Employee" ALTER COLUMN "department" DROP NOT NULL;`,
+          );
+        } catch (e) {}
         try {
           await this.$executeRawUnsafe(`
             DO $$ BEGIN
@@ -111,8 +206,12 @@ export class PrismaService
               END IF;
             END $$;
           `);
-        } catch(e) {}
-        try { await this.$executeRawUnsafe(`ALTER TABLE IF EXISTS "Employee" ALTER COLUMN "qrToken" DROP NOT NULL;`); } catch(e) {}
+        } catch (e) {}
+        try {
+          await this.$executeRawUnsafe(
+            `ALTER TABLE IF EXISTS "Employee" ALTER COLUMN "qrToken" DROP NOT NULL;`,
+          );
+        } catch (e) {}
         await this.$executeRawUnsafe(`
           ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "isReInterview" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "rejectionCount" INTEGER DEFAULT 0;
@@ -181,6 +280,38 @@ export class PrismaService
             CONSTRAINT "BreakMisuseIncident_pkey" PRIMARY KEY ("id")
           );
           ALTER TABLE IF EXISTS "BreakMisuseIncident" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
+
+          CREATE TABLE IF NOT EXISTS "CnvRecord" (
+            "id" TEXT NOT NULL,
+            "requisitionId" TEXT NOT NULL,
+            "cnvStatus" "CnvStatus" NOT NULL DEFAULT 'PENDING_NOTIFICATION',
+            "employmentExchangeOffice" TEXT,
+            "notificationDate" TIMESTAMP(3),
+            "submissionMode" "CnvSubmissionMode",
+            "referenceNumber" TEXT,
+            "acknowledgementNumber" TEXT,
+            "acknowledgementDate" TIMESTAMP(3),
+            "acknowledgementDocumentUrl" TEXT,
+            "cnvRemarks" TEXT,
+            "submittedBy" TEXT,
+            "acknowledgedBy" TEXT,
+            "notificationGeneratedAt" TIMESTAMP(3),
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "CnvRecord_pkey" PRIMARY KEY ("id")
+          );
+          CREATE UNIQUE INDEX IF NOT EXISTS "CnvRecord_requisitionId_key" ON "CnvRecord"("requisitionId");
+
+          CREATE TABLE IF NOT EXISTS "CnvHistory" (
+            "id" TEXT NOT NULL,
+            "cnvRecordId" TEXT NOT NULL,
+            "action" TEXT NOT NULL,
+            "description" TEXT NOT NULL,
+            "performedBy" TEXT,
+            "metadata" JSONB,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "CnvHistory_pkey" PRIMARY KEY ("id")
+          );
         `);
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "FiscalYear" (
@@ -193,7 +324,7 @@ export class PrismaService
           );
         `);
         await this.$executeRawUnsafe(
-          `CREATE UNIQUE INDEX IF NOT EXISTS "FiscalYear_name_key" ON "FiscalYear"("name");`
+          `CREATE UNIQUE INDEX IF NOT EXISTS "FiscalYear_name_key" ON "FiscalYear"("name");`,
         );
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "TrainingType" (
@@ -205,7 +336,7 @@ export class PrismaService
           );
         `);
         await this.$executeRawUnsafe(
-          `CREATE UNIQUE INDEX IF NOT EXISTS "TrainingType_name_key" ON "TrainingType"("name");`
+          `CREATE UNIQUE INDEX IF NOT EXISTS "TrainingType_name_key" ON "TrainingType"("name");`,
         );
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "DepartmentLeaveMaster" (
@@ -224,8 +355,16 @@ export class PrismaService
             CONSTRAINT "DepartmentLeaveMaster_pkey" PRIMARY KEY ("id")
           );
         `);
-        try { await this.$executeRawUnsafe(`ALTER TABLE IF EXISTS "DepartmentLeaveMaster" ALTER COLUMN "department" DROP NOT NULL;`); } catch(e) {}
-        try { await this.$executeRawUnsafe(`ALTER TABLE IF EXISTS "DepartmentLeaveMaster" ALTER COLUMN "fiscalYear" DROP NOT NULL;`); } catch(e) {}
+        try {
+          await this.$executeRawUnsafe(
+            `ALTER TABLE IF EXISTS "DepartmentLeaveMaster" ALTER COLUMN "department" DROP NOT NULL;`,
+          );
+        } catch (e) {}
+        try {
+          await this.$executeRawUnsafe(
+            `ALTER TABLE IF EXISTS "DepartmentLeaveMaster" ALTER COLUMN "fiscalYear" DROP NOT NULL;`,
+          );
+        } catch (e) {}
         await this.$executeRawUnsafe(`
           CREATE UNIQUE INDEX IF NOT EXISTS "DepartmentLeaveMaster_departmentId_fiscalYearId_key" ON "DepartmentLeaveMaster"("departmentId", "fiscalYearId");
         `);
@@ -248,7 +387,11 @@ export class PrismaService
           ALTER TABLE IF EXISTS "TrainingRecord" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
           ALTER TABLE IF EXISTS "TrainingRecord" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
         `);
-        try { await this.$executeRawUnsafe(`ALTER TABLE IF EXISTS "TrainingRecord" ALTER COLUMN "trainingType" DROP NOT NULL;`); } catch(e) {}
+        try {
+          await this.$executeRawUnsafe(
+            `ALTER TABLE IF EXISTS "TrainingRecord" ALTER COLUMN "trainingType" DROP NOT NULL;`,
+          );
+        } catch (e) {}
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "SalaryStructure" (
             "id" TEXT NOT NULL,

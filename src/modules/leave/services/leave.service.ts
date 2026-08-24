@@ -26,7 +26,7 @@ export class LeaveService {
   constructor(
     private readonly leaveRepository: LeaveRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getHolidays(query: PaginationQueryDto = {}) {
     const res = await this.leaveRepository.findManyHolidays(query);
@@ -68,7 +68,9 @@ export class LeaveService {
     return this.leaveRepository.deleteHoliday(id);
   }
 
-  async getLeaveApplications(query: PaginationQueryDto & { employeeId?: string; status?: string } = {}) {
+  async getLeaveApplications(
+    query: PaginationQueryDto & { employeeId?: string; status?: string } = {},
+  ) {
     const res = await this.leaveRepository.findManyLeaveApplications(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -110,7 +112,7 @@ export class LeaveService {
       const days =
         Math.ceil(
           (application.endDate.getTime() - application.startDate.getTime()) /
-          (1000 * 3600 * 24),
+            (1000 * 3600 * 24),
         ) + 1;
       const balance = await this.leaveRepository.findLeaveBalance(
         application.employeeId,
@@ -134,7 +136,7 @@ export class LeaveService {
       const days =
         Math.ceil(
           (application.endDate.getTime() - application.startDate.getTime()) /
-          (1000 * 3600 * 24),
+            (1000 * 3600 * 24),
         ) + 1;
       const balance = await this.leaveRepository.findLeaveBalance(
         application.employeeId,
@@ -158,7 +160,12 @@ export class LeaveService {
   }
 
   // --- Department Leave Master ---
-  async getLeaveMasters(query: PaginationQueryDto & { department?: string; fiscalYear?: string } = {}) {
+  async getLeaveMasters(
+    query: PaginationQueryDto & {
+      department?: string;
+      fiscalYear?: string;
+    } = {},
+  ) {
     const res = await this.leaveRepository.findManyLeaveMasters(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -166,7 +173,9 @@ export class LeaveService {
   private async resolveDepartmentId(value: string): Promise<string> {
     if (!value) return value;
     try {
-      const byId = await this.prisma.department.findUnique({ where: { id: value } });
+      const byId = await this.prisma.department.findUnique({
+        where: { id: value },
+      });
       if (byId) return byId.id;
     } catch (e) {}
     try {
@@ -174,7 +183,9 @@ export class LeaveService {
         where: { name: { equals: value, mode: 'insensitive' } },
       });
       if (byName) return byName.id;
-      const created = await this.prisma.department.create({ data: { name: value } });
+      const created = await this.prisma.department.create({
+        data: { name: value },
+      });
       return created.id;
     } catch (e) {
       return value;
@@ -184,7 +195,9 @@ export class LeaveService {
   private async resolveFiscalYearId(value: string): Promise<string> {
     if (!value) return value;
     try {
-      const byId = await this.prisma.fiscalYear.findUnique({ where: { id: value } });
+      const byId = await this.prisma.fiscalYear.findUnique({
+        where: { id: value },
+      });
       if (byId) return byId.id;
     } catch (e) {}
     try {
@@ -192,7 +205,9 @@ export class LeaveService {
         where: { name: { equals: value, mode: 'insensitive' } },
       });
       if (byName) return byName.id;
-      const created = await this.prisma.fiscalYear.create({ data: { name: value } });
+      const created = await this.prisma.fiscalYear.create({
+        data: { name: value },
+      });
       return created.id;
     } catch (e) {
       return value;
@@ -218,7 +233,9 @@ export class LeaveService {
       },
     });
     if (existing) {
-      throw new ConflictException(`Leave master for selected department and fiscal year already exists.`);
+      throw new ConflictException(
+        `Leave master for selected department and fiscal year already exists.`,
+      );
     }
     return this.leaveRepository.createLeaveMaster({
       ...dto,
@@ -244,7 +261,7 @@ export class LeaveService {
     } catch (error) {
       if (error.code === 'P2003' || error.code === 'P2014') {
         throw new ConflictException(
-          'This Leave Master record is currently in use and cannot be deleted.'
+          'This Leave Master record is currently in use and cannot be deleted.',
         );
       }
       throw error;

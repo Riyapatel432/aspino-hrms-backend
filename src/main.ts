@@ -29,7 +29,12 @@ async function bootstrap() {
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-Requested-With',
+    ],
   });
 
   // Serve uploads statically

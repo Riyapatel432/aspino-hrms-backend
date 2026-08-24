@@ -11,9 +11,11 @@ export class ExitService {
     private readonly exitRepository: ExitRepository,
     private readonly prisma: PrismaService,
     private readonly payrollService: PayrollService,
-  ) { }
+  ) {}
 
-  async getExits(query: PaginationQueryDto & { status?: string; type?: string } = {}) {
+  async getExits(
+    query: PaginationQueryDto & { status?: string; type?: string } = {},
+  ) {
     const res = await this.exitRepository.findManyExits(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }

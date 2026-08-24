@@ -1,8 +1,17 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  Min,
+} from 'class-validator';
 
 export class CreateShiftDto {
   @IsString({ message: 'Shift name must be a string.' })
-  @IsNotEmpty({ message: 'Shift name is required (e.g. Morning, Night, General).' })
+  @IsNotEmpty({
+    message: 'Shift name is required (e.g. Morning, Night, General).',
+  })
   name: string;
 
   @IsString({ message: 'Start time must be a string.' })

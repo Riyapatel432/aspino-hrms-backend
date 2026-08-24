@@ -14,7 +14,10 @@ import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { CreateFeedbackDto } from '../dto/create-feedback.dto';
 import { CreateOfferDto } from '../dto/create-offer.dto';
-import { generateOfferLetterPdf } from './pdf-generator.helper';
+import {
+  generateOfferLetterPdf,
+  generateCnvNotificationPdf,
+} from './pdf-generator.helper';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
@@ -45,7 +48,7 @@ export class RecruitmentService {
   constructor(
     private readonly recruitmentRepository: RecruitmentRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   // ---------------------------------------------------------------------------
   // 0. Departments
@@ -62,10 +65,15 @@ export class RecruitmentService {
         where: { name: { equals: name, mode: 'insensitive' } },
       });
       if (existing) {
-        throw new ConflictException('Department with this name already exists.');
+        throw new ConflictException(
+          'Department with this name already exists.',
+        );
       }
     }
-    const dept = await this.recruitmentRepository.createDepartment(name, isActive);
+    const dept = await this.recruitmentRepository.createDepartment(
+      name,
+      isActive,
+    );
     this.logger.log(`Department created: "${name}" (id=${dept.id})`);
     return dept;
   }
@@ -79,11 +87,19 @@ export class RecruitmentService {
         },
       });
       if (existing) {
-        throw new ConflictException('Department with this name already exists.');
+        throw new ConflictException(
+          'Department with this name already exists.',
+        );
       }
     }
-    const dept = await this.recruitmentRepository.updateDepartment(id, name, isActive);
-    this.logger.log(`Department updated: id=${id}, name="${name}", isActive=${isActive}`);
+    const dept = await this.recruitmentRepository.updateDepartment(
+      id,
+      name,
+      isActive,
+    );
+    this.logger.log(
+      `Department updated: id=${id}, name="${name}", isActive=${isActive}`,
+    );
     return dept;
   }
 
@@ -94,13 +110,25 @@ export class RecruitmentService {
     let reqCount = 0;
     let empCount = 0;
     let lmCount = 0;
-    try { reqCount = await this.prisma.jobRequisition.count({ where: { departmentId: id } }); } catch (e) {}
-    try { empCount = await this.prisma.employee.count({ where: { departmentId: id } }); } catch (e) {}
-    try { lmCount = await this.prisma.departmentLeaveMaster.count({ where: { departmentId: id } }); } catch (e) {}
+    try {
+      reqCount = await this.prisma.jobRequisition.count({
+        where: { departmentId: id },
+      });
+    } catch (e) {}
+    try {
+      empCount = await this.prisma.employee.count({
+        where: { departmentId: id },
+      });
+    } catch (e) {}
+    try {
+      lmCount = await this.prisma.departmentLeaveMaster.count({
+        where: { departmentId: id },
+      });
+    } catch (e) {}
 
     if (reqCount > 0 || empCount > 0 || lmCount > 0) {
       throw new ConflictException(
-        `Department "${dept.name}" is already in use by requisitions, employees, or leave masters and cannot be deleted.`
+        `Department "${dept.name}" is already in use by requisitions, employees, or leave masters and cannot be deleted.`,
       );
     }
 
@@ -110,7 +138,7 @@ export class RecruitmentService {
     } catch (error) {
       if (error.code === 'P2003' || error.code === 'P2014') {
         throw new ConflictException(
-          `Department "${dept.name}" is already in use and cannot be deleted.`
+          `Department "${dept.name}" is already in use and cannot be deleted.`,
         );
       }
       throw error;
@@ -137,7 +165,10 @@ export class RecruitmentService {
         );
       }
     }
-    const type = await this.recruitmentRepository.createTrainingType(name, isActive);
+    const type = await this.recruitmentRepository.createTrainingType(
+      name,
+      isActive,
+    );
     this.logger.log(`TrainingType created: "${name}" (id=${type.id})`);
     return type;
   }
@@ -156,8 +187,14 @@ export class RecruitmentService {
         );
       }
     }
-    const type = await this.recruitmentRepository.updateTrainingType(id, name, isActive);
-    this.logger.log(`TrainingType updated: id=${id}, name="${name}", isActive=${isActive}`);
+    const type = await this.recruitmentRepository.updateTrainingType(
+      id,
+      name,
+      isActive,
+    );
+    this.logger.log(
+      `TrainingType updated: id=${id}, name="${name}", isActive=${isActive}`,
+    );
     return type;
   }
 
@@ -168,12 +205,14 @@ export class RecruitmentService {
     let trainCount = 0;
     try {
       trainCount = await this.prisma.trainingRecord.count({
-        where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
+        where: {
+          trainingType: { name: { equals: type.name, mode: 'insensitive' } },
+        },
       });
     } catch (e) {}
     if (trainCount > 0) {
       throw new ConflictException(
-        `Training type "${type.name}" is already in use by employee trainings and cannot be deleted.`
+        `Training type "${type.name}" is already in use by employee trainings and cannot be deleted.`,
       );
     }
 
@@ -183,7 +222,7 @@ export class RecruitmentService {
     } catch (error) {
       if (error.code === 'P2003' || error.code === 'P2014') {
         throw new ConflictException(
-          `Training type "${type.name}" is already in use and cannot be deleted.`
+          `Training type "${type.name}" is already in use and cannot be deleted.`,
         );
       }
       throw error;
@@ -194,7 +233,9 @@ export class RecruitmentService {
   // 1. Job Requisition
   // ---------------------------------------------------------------------------
 
-  async getRequisitions(query: PaginationQueryDto & { status?: string; departmentId?: string } = {}) {
+  async getRequisitions(
+    query: PaginationQueryDto & { status?: string; departmentId?: string } = {},
+  ) {
     const res = await this.recruitmentRepository.findManyRequisitions(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -204,13 +245,18 @@ export class RecruitmentService {
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
-    if (dto.requisitionType === 'REPLACEMENT' && !dto.replacementForEmployeeId) {
+    if (
+      dto.requisitionType === 'REPLACEMENT' &&
+      !dto.replacementForEmployeeId
+    ) {
       throw new BadRequestException(
         'Please select the employee who is being replaced for replacement requisitions.',
       );
     }
     const req = await this.recruitmentRepository.createRequisition(dto);
-    this.logger.log(`Requisition created: "${dto.title}" (id=${req.id}, type=${req.requisitionType})`);
+    this.logger.log(
+      `Requisition created: "${dto.title}" (id=${req.id}, type=${req.requisitionType})`,
+    );
     return req;
   }
 
@@ -224,10 +270,19 @@ export class RecruitmentService {
   }
 
   async updateRequisition(id: string, data: Prisma.JobRequisitionUpdateInput) {
-    if ((data as any).requisitionType === 'REPLACEMENT' && !(data as any).replacementForEmployeeId && !(data as any).replacementForEmployee) {
+    if (
+      (data as any).requisitionType === 'REPLACEMENT' &&
+      !(data as any).replacementForEmployeeId &&
+      !(data as any).replacementForEmployee
+    ) {
       // If updating to REPLACEMENT, require replacement employee
-      const existing = await this.prisma.jobRequisition.findUnique({ where: { id } });
-      if (!existing?.replacementForEmployeeId && !(data as any).replacementForEmployeeId) {
+      const existing = await this.prisma.jobRequisition.findUnique({
+        where: { id },
+      });
+      if (
+        !existing?.replacementForEmployeeId &&
+        !(data as any).replacementForEmployeeId
+      ) {
         throw new BadRequestException(
           'Please select the employee who is being replaced for replacement requisitions.',
         );
@@ -245,7 +300,12 @@ export class RecruitmentService {
   // 2. Candidate Sourcing & Applications
   // ---------------------------------------------------------------------------
 
-  async getCandidates(query: PaginationQueryDto & { status?: string; requisitionId?: string } = {}) {
+  async getCandidates(
+    query: PaginationQueryDto & {
+      status?: string;
+      requisitionId?: string;
+    } = {},
+  ) {
     const res = await this.recruitmentRepository.findManyCandidates(query);
 
     // Auto-update REJECTED candidates status in DB to RE_INTERVIEW_ELIGIBLE if 30-day cool-off period has passed
@@ -253,19 +313,32 @@ export class RecruitmentService {
     const coolOffDays = 30;
 
     for (const cand of res.data) {
-      if (cand.status === 'REJECTED' || cand.rejectedAt || (cand.coolOffDaysLeft ?? 0) > 0) {
-        let lastDate = cand.rejectedAt ? new Date(cand.rejectedAt) : (cand.updatedAt ? new Date(cand.updatedAt) : new Date(cand.createdAt));
+      if (
+        cand.status === 'REJECTED' ||
+        cand.rejectedAt ||
+        (cand.coolOffDaysLeft ?? 0) > 0
+      ) {
+        let lastDate = cand.rejectedAt
+          ? new Date(cand.rejectedAt)
+          : cand.updatedAt
+            ? new Date(cand.updatedAt)
+            : new Date(cand.createdAt);
         if ((cand as any).schedules && (cand as any).schedules.length > 0) {
-          const dates = (cand as any).schedules.map((s: any) => new Date(s.scheduledAt).getTime());
+          const dates = (cand as any).schedules.map((s: any) =>
+            new Date(s.scheduledAt).getTime(),
+          );
           const maxDate = new Date(Math.max(...dates));
           if (maxDate > lastDate) lastDate = maxDate;
         }
 
-        const daysPassed = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysPassed = Math.floor(
+          (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
         const daysLeft = Math.max(0, coolOffDays - daysPassed);
 
         if (cand.status === 'REJECTED') {
-          const newStatus = daysLeft <= 0 ? 'RE_INTERVIEW_ELIGIBLE' : 'REJECTED';
+          const newStatus =
+            daysLeft <= 0 ? 'RE_INTERVIEW_ELIGIBLE' : 'REJECTED';
           await this.prisma.candidate.update({
             where: { id: cand.id },
             data: { coolOffDaysLeft: daysLeft, status: newStatus },
@@ -339,13 +412,19 @@ export class RecruitmentService {
   // 3. Interview Scheduling
   // ---------------------------------------------------------------------------
 
-  async getSchedules(query: PaginationQueryDto & { status?: string; candidateId?: string } = {}) {
+  async getSchedules(
+    query: PaginationQueryDto & { status?: string; candidateId?: string } = {},
+  ) {
     const res = await this.recruitmentRepository.findManySchedules(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
   async createSchedule(dto: CreateScheduleDto) {
-    if (!dto.roundName?.trim() || dto.roundName.trim() === '0' || /^0+$/.test(dto.roundName.trim())) {
+    if (
+      !dto.roundName?.trim() ||
+      dto.roundName.trim() === '0' ||
+      /^0+$/.test(dto.roundName.trim())
+    ) {
       throw new BadRequestException('Round name cannot be 0 or empty.');
     }
     const schedule = await this.recruitmentRepository.createSchedule(dto);
@@ -353,15 +432,25 @@ export class RecruitmentService {
     const candidate = await this.prisma.candidate.findUnique({
       where: { id: dto.candidateId },
     });
-    if (candidate && candidate.status !== 'SELECTED' && candidate.status !== 'ACCEPTED') {
-      await this.recruitmentRepository.updateCandidateStatus(dto.candidateId, 'INTERVIEWING');
+    if (
+      candidate &&
+      candidate.status !== 'SELECTED' &&
+      candidate.status !== 'ACCEPTED'
+    ) {
+      await this.recruitmentRepository.updateCandidateStatus(
+        dto.candidateId,
+        'INTERVIEWING',
+      );
     }
     return schedule;
   }
 
   async updateSchedule(id: string, data: Prisma.InterviewScheduleUpdateInput) {
     if (data.roundName !== undefined) {
-      const val = typeof data.roundName === 'string' ? data.roundName : String(data.roundName);
+      const val =
+        typeof data.roundName === 'string'
+          ? data.roundName
+          : String(data.roundName);
       if (!val.trim() || val.trim() === '0' || /^0+$/.test(val.trim())) {
         throw new BadRequestException('Round name cannot be 0 or empty.');
       }
@@ -421,7 +510,11 @@ export class RecruitmentService {
     if (!candidate) {
       throw new NotFoundException('Candidate not found.');
     }
-    if (candidate.status !== 'SELECTED' && candidate.status !== 'OFFERED' && candidate.status !== 'ACCEPTED') {
+    if (
+      candidate.status !== 'SELECTED' &&
+      candidate.status !== 'OFFERED' &&
+      candidate.status !== 'ACCEPTED'
+    ) {
       throw new BadRequestException(
         'Offer letters can only be generated for candidates with status SELECTED.',
       );
@@ -508,7 +601,9 @@ export class RecruitmentService {
         });
 
         // Check if an employee with this email already exists
-        const candEmail = offer.candidate.email ? offer.candidate.email.toLowerCase().trim() : '';
+        const candEmail = offer.candidate.email
+          ? offer.candidate.email.toLowerCase().trim()
+          : '';
         const existingEmp = await tx.employee.findUnique({
           where: { email: candEmail },
         });
@@ -549,7 +644,9 @@ export class RecruitmentService {
 
         // 6. Create employee record
         let dept = await tx.department.findFirst({
-          where: { name: { equals: DEFAULT_EMPLOYEE_DEPARTMENT, mode: 'insensitive' } },
+          where: {
+            name: { equals: DEFAULT_EMPLOYEE_DEPARTMENT, mode: 'insensitive' },
+          },
         });
         if (!dept) {
           dept = await tx.department.findFirst();
@@ -566,10 +663,13 @@ export class RecruitmentService {
             firstName,
             lastName,
             email: candEmail,
+            phone: offer.candidate?.phone || null,
+            location: (offer as any)?.location || 'Vadodara Plant',
             departmentId: dept.id,
             designation: offer.role,
             dateOfJoining: joiningDate,
-            totalExperienceYears: Number((offer.candidate as any)?.experienceYears) || 0.0,
+            totalExperienceYears:
+              Number((offer.candidate as any)?.experienceYears) || 0.0,
             status: 'ONBOARDING',
             probationEnd,
             qrToken: randomUUID(),
@@ -610,18 +710,27 @@ export class RecruitmentService {
   }
 
   async createFiscalYear(data: { name: string; isActive?: boolean }) {
-    if (!data.name?.trim()) throw new BadRequestException('Financial Year name is required');
+    if (!data.name?.trim())
+      throw new BadRequestException('Financial Year name is required');
     const nameStr = data.name.trim();
     const existing = await this.prisma.fiscalYear.findFirst({
       where: { name: { equals: nameStr, mode: 'insensitive' } },
     });
     if (existing) {
-      throw new ConflictException('Financial Year with this name already exists.');
+      throw new ConflictException(
+        'Financial Year with this name already exists.',
+      );
     }
-    return this.recruitmentRepository.createFiscalYear({ name: nameStr, isActive: data.isActive });
+    return this.recruitmentRepository.createFiscalYear({
+      name: nameStr,
+      isActive: data.isActive,
+    });
   }
 
-  async updateFiscalYear(id: string, data: { name?: string; isActive?: boolean }) {
+  async updateFiscalYear(
+    id: string,
+    data: { name?: string; isActive?: boolean },
+  ) {
     if (data.name?.trim()) {
       const nameStr = data.name.trim();
       const existing = await this.prisma.fiscalYear.findFirst({
@@ -631,7 +740,9 @@ export class RecruitmentService {
         },
       });
       if (existing) {
-        throw new ConflictException('Financial Year with this name already exists.');
+        throw new ConflictException(
+          'Financial Year with this name already exists.',
+        );
       }
     }
     return this.recruitmentRepository.updateFiscalYear(id, data);
@@ -654,7 +765,7 @@ export class RecruitmentService {
     } catch (e) {}
     if (lmCount > 0) {
       throw new ConflictException(
-        `Financial Year "${fy.name}" is already in use by Department Leave Master and cannot be deleted.`
+        `Financial Year "${fy.name}" is already in use by Department Leave Master and cannot be deleted.`,
       );
     }
 
@@ -663,10 +774,287 @@ export class RecruitmentService {
     } catch (error) {
       if (error.code === 'P2003' || error.code === 'P2014') {
         throw new ConflictException(
-          `Financial Year "${fy.name}" is already in use and cannot be deleted.`
+          `Financial Year "${fy.name}" is already in use and cannot be deleted.`,
         );
       }
       throw error;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CNV Compliance Workflow
+  // ---------------------------------------------------------------------------
+
+  async getCnvDetails(requisitionId: string) {
+    const req = await this.prisma.jobRequisition.findUnique({
+      where: { id: requisitionId },
+      include: {
+        department: true,
+        cnvRecord: { include: { history: { orderBy: { createdAt: 'asc' } } } },
+      },
+    });
+    if (!req) throw new NotFoundException('Requisition not found.');
+
+    // Auto-create CnvRecord if it doesn't exist yet
+    if (!req.cnvRecord) {
+      await this.recruitmentRepository.findOrCreateCnvRecord(
+        requisitionId,
+        req.cnvExchangeOffice || null,
+        'System',
+      );
+      // Re-fetch with the new record
+      const updated = await this.prisma.jobRequisition.findUnique({
+        where: { id: requisitionId },
+        include: {
+          department: true,
+          cnvRecord: {
+            include: { history: { orderBy: { createdAt: 'asc' } } },
+          },
+        },
+      });
+      return updated;
+    }
+    return req;
+  }
+
+  async generateCnvNotification(requisitionId: string, performedBy?: string) {
+    const req = await this.prisma.jobRequisition.findUnique({
+      where: { id: requisitionId },
+      include: { department: true, cnvRecord: true },
+    });
+    if (!req) throw new NotFoundException('Requisition not found.');
+    if (!req.isCnvApplicable)
+      throw new BadRequestException(
+        'CNV is not applicable for this requisition.',
+      );
+
+    const cnvRecord = await this.recruitmentRepository.findOrCreateCnvRecord(
+      requisitionId,
+      req.cnvExchangeOffice || null,
+      performedBy || 'HR',
+    );
+
+    const fileName = `cnv-notification-${requisitionId}.pdf`;
+    const uploadsDir = join(process.cwd(), 'uploads', 'cnv-documents');
+    const filePath = join(uploadsDir, fileName);
+    const documentUrl = `/uploads/cnv-documents/${fileName}`;
+
+    try {
+      await generateCnvNotificationPdf(filePath, {
+        requisitionId: req.id,
+        title: req.title,
+        departmentName: req.department?.name || 'General',
+        headcount: req.headcount,
+        experienceRequired: req.experienceRequired,
+        requisitionType: req.requisitionType,
+        jobSpecification: req.jobSpecification,
+        exchangeOffice: req.cnvExchangeOffice || 'District Employment Exchange',
+        refNumber: req.cnvRefNumber,
+      });
+    } catch (pdfErr) {
+      this.logger.warn(
+        `Failed to generate CNV PDF file: ${(pdfErr as Error).message}`,
+      );
+    }
+
+    await this.recruitmentRepository.updateCnvRecord(requisitionId, {
+      notificationGeneratedAt: new Date(),
+    });
+
+    await this.recruitmentRepository.createCnvHistory(
+      cnvRecord.id,
+      'NOTIFICATION_GENERATED',
+      `CNV Notification document generated for "${req.title}" (${req.department?.name || 'Dept'}).`,
+      performedBy || 'HR Manager',
+      {
+        requisitionId,
+        jobTitle: req.title,
+        headcount: req.headcount,
+        documentUrl,
+      },
+    );
+
+    this.logger.log(
+      `CNV notification generated for requisitionId=${requisitionId} by ${performedBy}`,
+    );
+    return {
+      success: true,
+      message: 'CNV notification generated successfully.',
+      documentUrl,
+    };
+  }
+
+  async recordCnvSubmission(
+    requisitionId: string,
+    dto: any,
+    documentUrl?: string,
+  ) {
+    const req = await this.prisma.jobRequisition.findUnique({
+      where: { id: requisitionId },
+      include: { department: true, cnvRecord: true },
+    });
+    if (!req) throw new NotFoundException('Requisition not found.');
+    if (!req.isCnvApplicable)
+      throw new BadRequestException(
+        'CNV is not applicable for this requisition.',
+      );
+
+    const cnvRecord = await this.recruitmentRepository.findOrCreateCnvRecord(
+      requisitionId,
+      req.cnvExchangeOffice || null,
+      dto.submittedBy || 'HR',
+    );
+
+    if (
+      cnvRecord.cnvStatus === 'NOTIFIED' ||
+      cnvRecord.cnvStatus === 'ACKNOWLEDGED'
+    ) {
+      throw new BadRequestException(
+        'CNV submission has already been recorded. Status is already NOTIFIED or ACKNOWLEDGED.',
+      );
+    }
+
+    if (!dto.notificationDate) {
+      throw new BadRequestException(
+        'Notification date is required when recording submission.',
+      );
+    }
+    if (!dto.submissionMode) {
+      throw new BadRequestException('Submission mode is required.');
+    }
+    if (!dto.employmentExchangeOffice?.trim()) {
+      throw new BadRequestException(
+        'Employment Exchange / Authority name is required.',
+      );
+    }
+
+    const updateData: any = {
+      cnvStatus: 'NOTIFIED',
+      employmentExchangeOffice: dto.employmentExchangeOffice,
+      notificationDate: new Date(dto.notificationDate),
+      submissionMode: dto.submissionMode,
+      referenceNumber: dto.referenceNumber || null,
+      cnvRemarks: dto.cnvRemarks || null,
+      submittedBy: dto.submittedBy || null,
+    };
+    if (documentUrl) updateData.acknowledgementDocumentUrl = documentUrl;
+
+    await this.recruitmentRepository.updateCnvRecord(requisitionId, updateData);
+
+    // Sync JobRequisition cnvStatus string
+    await this.prisma.jobRequisition.update({
+      where: { id: requisitionId },
+      data: {
+        cnvStatus: 'NOTIFIED',
+        cnvExchangeOffice: dto.employmentExchangeOffice,
+        cnvNotificationDate: new Date(dto.notificationDate),
+        cnvRefNumber: dto.referenceNumber || null,
+      },
+    });
+
+    await this.recruitmentRepository.createCnvHistory(
+      cnvRecord.id,
+      'SUBMISSION_RECORDED',
+      `CNV Submission recorded. Mode: ${dto.submissionMode}. Submitted to: ${dto.employmentExchangeOffice}.${dto.referenceNumber ? ` Reference: ${dto.referenceNumber}.` : ''}`,
+      dto.submittedBy || 'HR Manager',
+      {
+        submissionMode: dto.submissionMode,
+        referenceNumber: dto.referenceNumber,
+        notificationDate: dto.notificationDate,
+      },
+    );
+
+    this.logger.log(
+      `CNV submission recorded for requisitionId=${requisitionId}, mode=${dto.submissionMode}`,
+    );
+
+    return this.recruitmentRepository.getCnvRecord(requisitionId);
+  }
+
+  async recordCnvAcknowledgement(
+    requisitionId: string,
+    dto: any,
+    documentUrl?: string,
+  ) {
+    const req = await this.prisma.jobRequisition.findUnique({
+      where: { id: requisitionId },
+      include: { cnvRecord: true },
+    });
+    if (!req) throw new NotFoundException('Requisition not found.');
+    if (!req.isCnvApplicable)
+      throw new BadRequestException(
+        'CNV is not applicable for this requisition.',
+      );
+
+    const cnvRecord =
+      await this.recruitmentRepository.getCnvRecord(requisitionId);
+    if (!cnvRecord) {
+      throw new BadRequestException(
+        'No CNV submission has been recorded. Please record submission before acknowledgement.',
+      );
+    }
+    if (cnvRecord.cnvStatus !== 'NOTIFIED') {
+      if (cnvRecord.cnvStatus === 'ACKNOWLEDGED') {
+        throw new BadRequestException('CNV has already been acknowledged.');
+      }
+      throw new BadRequestException(
+        'Cannot record acknowledgement before CNV notification has been submitted. Please record submission first.',
+      );
+    }
+
+    if (!dto.acknowledgementNumber?.trim()) {
+      throw new BadRequestException('Acknowledgement number is required.');
+    }
+    if (!dto.acknowledgementDate) {
+      throw new BadRequestException('Acknowledgement date is required.');
+    }
+
+    // Validate acknowledgement date is not before notification date
+    if (cnvRecord.notificationDate) {
+      const ackDate = new Date(dto.acknowledgementDate);
+      const notifDate = new Date(cnvRecord.notificationDate);
+      if (ackDate < notifDate) {
+        throw new BadRequestException(
+          'Acknowledgement date cannot be before the notification/submission date.',
+        );
+      }
+    }
+
+    const updateData: any = {
+      cnvStatus: 'ACKNOWLEDGED',
+      acknowledgementNumber: dto.acknowledgementNumber,
+      acknowledgementDate: new Date(dto.acknowledgementDate),
+      cnvRemarks: dto.cnvRemarks || cnvRecord.cnvRemarks || null,
+      acknowledgedBy: dto.acknowledgedBy || null,
+    };
+    if (documentUrl) updateData.acknowledgementDocumentUrl = documentUrl;
+
+    await this.recruitmentRepository.updateCnvRecord(requisitionId, updateData);
+
+    // Sync JobRequisition cnvStatus string
+    await this.prisma.jobRequisition.update({
+      where: { id: requisitionId },
+      data: {
+        cnvStatus: 'ACKNOWLEDGED',
+        cnvRefNumber: dto.acknowledgementNumber,
+      },
+    });
+
+    await this.recruitmentRepository.createCnvHistory(
+      cnvRecord.id,
+      'ACKNOWLEDGEMENT_RECORDED',
+      `CNV Acknowledgement received. Acknowledgement No: ${dto.acknowledgementNumber}.${dto.cnvRemarks ? ` Remarks: ${dto.cnvRemarks}.` : ''}`,
+      dto.acknowledgedBy || 'HR Manager',
+      {
+        acknowledgementNumber: dto.acknowledgementNumber,
+        acknowledgementDate: dto.acknowledgementDate,
+      },
+    );
+
+    this.logger.log(
+      `CNV acknowledged for requisitionId=${requisitionId}, ackNo=${dto.acknowledgementNumber}`,
+    );
+
+    return this.recruitmentRepository.getCnvRecord(requisitionId);
   }
 }

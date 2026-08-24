@@ -349,6 +349,87 @@ async function main() {
     create: { id: '2', name: 'Diwali', date: new Date('2026-11-08') },
   });
 
+  // Seed Attendance Records with Multi-Punch & Break Detection (1-hour limit rule)
+  console.log('Seeding Attendance Records with Multi-Punch & Break Times...');
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  const dateNoon = new Date(`${dateStr}T12:00:00.000Z`);
+
+  // Record 1: Rajesh Verma - Standard 1-Hour Allowed Lunch Break (09:00 - 13:00, 14:00 - 18:00)
+  // Break: 60 mins -> Allowed within 1 hour limit.
+  const att1 = await prisma.attendance.create({
+    data: {
+      employeeId: emp1.id,
+      date: dateNoon,
+      checkIn: new Date(`${dateStr}T09:00:00.000Z`),
+      checkOut: new Date(`${dateStr}T18:00:00.000Z`),
+      shiftId: shiftGeneral.id,
+      shiftName: 'General Shift',
+      totalWorkHours: 8.0,
+      status: 'PRESENT',
+      breakMisuseMinutes: 0,
+      breakDeductionHours: 0.0,
+      hasBreakComplaint: false,
+      captureMethod: 'BIOMETRIC_MULTI_PUNCH',
+    },
+  });
+
+  // Record 2: Sneha Nair - Excess Break Misuse (09:00 - 13:00, 14:45 - 18:30)
+  // Break: 105 mins -> 45 mins excess over 1-hour limit! Flagged as NOT ALLOWED.
+  const att2 = await prisma.attendance.create({
+    data: {
+      employeeId: emp2.id,
+      date: dateNoon,
+      checkIn: new Date(`${dateStr}T09:00:00.000Z`),
+      checkOut: new Date(`${dateStr}T18:30:00.000Z`),
+      shiftId: shiftGeneral.id,
+      shiftName: 'General Shift',
+      totalWorkHours: 7.75, // 9.5 hrs span - 1.75 hrs break
+      status: 'PRESENT',
+      breakMisuseMinutes: 45, // 45m excess not allowed
+      breakDeductionHours: 0.75,
+      hasBreakComplaint: true,
+      captureMethod: 'BIOMETRIC_MULTI_PUNCH',
+    },
+  });
+
+  // Create Break Incident Complaint for Sneha's 45-minute excess break
+  await prisma.breakMisuseIncident.create({
+    data: {
+      attendanceId: att2.id,
+      employeeId: emp2.id,
+      incidentDate: dateNoon,
+      breakType: 'LUNCH_BREAK',
+      excessMinutes: 45,
+      deductionHours: 0.75,
+      severity: 'WARNING',
+      complaintDetails: 'Automatic detection: Lunch break took 105 minutes, exceeding the 60-minute limit by 45 minutes.',
+      reportedByName: 'Biometric Auto-Rule Engine',
+      status: 'REPORTED',
+    },
+  });
+
+  // Record 3: Vikram Singh - Multiple Breaks (Tea + Lunch) totaling exactly 60 minutes allowed
+  // In 1: 09:00 -> Out 1: 11:00 (2h) | Break 1: 11:00-11:15 (15m tea)
+  // In 2: 11:15 -> Out 2: 13:30 (2.25h) | Break 2: 13:30-14:15 (45m lunch)
+  // In 3: 14:15 -> Out 3: 18:00 (3.75h) => Total Work: 8.0 hrs | Total Break: 60m (Allowed ≤1h)
+  await prisma.attendance.create({
+    data: {
+      employeeId: emp3.id,
+      date: dateNoon,
+      checkIn: new Date(`${dateStr}T09:00:00.000Z`),
+      checkOut: new Date(`${dateStr}T18:00:00.000Z`),
+      shiftId: shiftGeneral.id,
+      shiftName: 'General Shift',
+      totalWorkHours: 8.0,
+      status: 'PRESENT',
+      breakMisuseMinutes: 0,
+      breakDeductionHours: 0.0,
+      hasBreakComplaint: false,
+      captureMethod: 'BIOMETRIC_MULTI_PUNCH',
+    },
+  });
+
   console.log('Seeding completed successfully!');
 }
 

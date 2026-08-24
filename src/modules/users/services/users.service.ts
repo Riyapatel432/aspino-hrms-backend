@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) { }
+  constructor(private readonly userRepository: UserRepository) {}
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email.toLowerCase().trim());

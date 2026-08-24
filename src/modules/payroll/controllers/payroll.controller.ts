@@ -1,11 +1,26 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { PayrollService } from '../services/payroll.service';
 import { CreateSalaryStructureDto } from '../dto/create-salary-structure.dto';
-import { SubmitRentReceiptDto, VerifyRentReceiptDto } from '../dto/submit-rent-receipt.dto';
+import {
+  SubmitRentReceiptDto,
+  VerifyRentReceiptDto,
+} from '../dto/submit-rent-receipt.dto';
 import { TaxDeclarationDto } from '../dto/tax-declaration.dto';
 import { CreateLoanDto } from '../dto/create-loan.dto';
-import { InitiatePayrollRunDto, ApprovePayrollRunDto } from '../dto/payroll-run.dto';
+import {
+  InitiatePayrollRunDto,
+  ApprovePayrollRunDto,
+} from '../dto/payroll-run.dto';
 
 @Controller('payroll')
 export class PayrollController {
@@ -38,13 +53,20 @@ export class PayrollController {
 
   @Post('salary-matrix/batch-save')
   async batchSaveSalaryMatrix(@Body() body: { records: any[] }) {
-    const records = Array.isArray(body) ? body : (body?.records || []);
+    const records = Array.isArray(body) ? body : body?.records || [];
     return this.payrollService.batchSaveSalaryMatrix(records);
   }
 
   @Post('salary-structure/copy-previous')
   async copyPreviousMonthSalaries(
-    @Body() body: { fromMonth?: number; fromYear?: number; toMonth?: number; toYear?: number; password?: string },
+    @Body()
+    body: {
+      fromMonth?: number;
+      fromYear?: number;
+      toMonth?: number;
+      toYear?: number;
+      password?: string;
+    },
   ) {
     return this.payrollService.copyPreviousMonthSalaries(
       body.fromMonth,
@@ -57,7 +79,7 @@ export class PayrollController {
 
   @Post('salary-structure/bulk-import')
   async bulkImportSalaryStructures(@Body() body: { records: any[] }) {
-    const records = Array.isArray(body) ? body : (body?.records || []);
+    const records = Array.isArray(body) ? body : body?.records || [];
     return this.payrollService.bulkImportSalaryStructures(records);
   }
 
@@ -71,7 +93,10 @@ export class PayrollController {
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="salary_structure_import_template.csv"');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="salary_structure_import_template.csv"',
+    );
     return res.send(csvContent);
   }
 
@@ -201,7 +226,11 @@ export class PayrollController {
     @Query('year') year: string,
     @Body() dto: ApprovePayrollRunDto,
   ) {
-    return this.payrollService.approvePayrollRun(parseInt(month), parseInt(year), dto.approvedBy);
+    return this.payrollService.approvePayrollRun(
+      parseInt(month),
+      parseInt(year),
+      dto.approvedBy,
+    );
   }
 
   @Get('run')
@@ -244,9 +273,15 @@ export class PayrollController {
     @Query('year') year: string,
     @Res() res: Response,
   ) {
-    const file = await this.payrollService.generateBankTransferFile(parseInt(month), parseInt(year));
+    const file = await this.payrollService.generateBankTransferFile(
+      parseInt(month),
+      parseInt(year),
+    );
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
     return res.send(file.content);
   }
 
@@ -255,7 +290,10 @@ export class PayrollController {
     @Query('month') month: string,
     @Query('year') year: string,
   ) {
-    return this.payrollService.generateStatutoryReports(parseInt(month), parseInt(year));
+    return this.payrollService.generateStatutoryReports(
+      parseInt(month),
+      parseInt(year),
+    );
   }
 
   @Get('export/form16/:employeeId')

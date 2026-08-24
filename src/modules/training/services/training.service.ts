@@ -17,9 +17,14 @@ export class TrainingService {
   constructor(
     private readonly trainingRepository: TrainingRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
-  async getTrainings(query: PaginationQueryDto & { employeeId?: string; trainingType?: string } = {}) {
+  async getTrainings(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      trainingType?: string;
+    } = {},
+  ) {
     const res = await this.trainingRepository.findManyTrainings(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }

@@ -30,7 +30,9 @@ export class CreateRequisitionDto {
 
   @IsString({ message: 'Job specification must be a string.' })
   @IsNotEmpty({ message: 'Job specification / requirements is required.' })
-  @MinLength(10, { message: 'Job specification must be at least 10 characters.' })
+  @MinLength(10, {
+    message: 'Job specification must be at least 10 characters.',
+  })
   jobSpecification: string;
 
   @IsString({ message: 'Raised by must be a string.' })
@@ -71,4 +73,3 @@ export class CreateRequisitionDto {
   @IsString()
   cnvExemptionReason?: string;
 }
-

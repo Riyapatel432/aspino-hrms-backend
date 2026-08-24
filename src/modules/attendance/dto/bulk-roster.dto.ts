@@ -19,7 +19,10 @@ export class BulkCreateRosterDto {
   @IsNotEmpty({ message: 'A target shift must be selected.' })
   shiftId: string;
 
-  @IsDateString({}, { message: 'Start date must be a valid date (YYYY-MM-DD).' })
+  @IsDateString(
+    {},
+    { message: 'Start date must be a valid date (YYYY-MM-DD).' },
+  )
   @IsNotEmpty({ message: 'Start date is required.' })
   startDate: string;
 

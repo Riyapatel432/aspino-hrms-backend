@@ -6,7 +6,7 @@ import { buildEmployeeSearchConditions } from '../../../common/utils/search.util
 
 @Injectable()
 export class LeaveRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findManyHolidays(query: PaginationQueryDto = {}) {
     const page = Number(query.page) || 1;
@@ -67,7 +67,9 @@ export class LeaveRepository {
     if (query.search) {
       const empConds = buildEmployeeSearchConditions(query.search);
       const searchUpper = query.search.toUpperCase().trim();
-      const isValidStatus = Object.values(LeaveStatus).includes(searchUpper as any);
+      const isValidStatus = Object.values(LeaveStatus).includes(
+        searchUpper as any,
+      );
       where.OR = [
         ...empConds.map((cond) => ({ employee: cond })),
         { leaveType: { contains: query.search, mode: 'insensitive' } },
@@ -178,7 +180,10 @@ export class LeaveRepository {
 
   // --- Department Leave Master ---
   async findManyLeaveMasters(
-    query: PaginationQueryDto & { department?: string; fiscalYear?: string } = {},
+    query: PaginationQueryDto & {
+      department?: string;
+      fiscalYear?: string;
+    } = {},
   ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -187,8 +192,12 @@ export class LeaveRepository {
     const where: Prisma.DepartmentLeaveMasterWhereInput = {};
     if (query.search) {
       where.OR = [
-        { department: { name: { contains: query.search, mode: 'insensitive' } } },
-        { fiscalYear: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          department: { name: { contains: query.search, mode: 'insensitive' } },
+        },
+        {
+          fiscalYear: { name: { contains: query.search, mode: 'insensitive' } },
+        },
       ];
     }
     if (query.department && query.department !== 'ALL') {
@@ -275,22 +284,49 @@ export class LeaveRepository {
 
   async updateLeaveMaster(id: string, data: any) {
     const updateData: any = {};
-    if (data.department !== undefined) updateData.departmentId = data.department;
-    if (data.fiscalYear !== undefined) updateData.fiscalYearId = data.fiscalYear;
-    if (data.casualLeave !== undefined) updateData.casualLeave = Number(data.casualLeave);
-    if (data.sickLeave !== undefined) updateData.sickLeave = Number(data.sickLeave);
-    if (data.earnedLeave !== undefined) updateData.earnedLeave = Number(data.earnedLeave);
-    if (data.otherLeave !== undefined) updateData.otherLeave = Number(data.otherLeave);
-    if (data.effectiveFrom !== undefined) updateData.effectiveFrom = new Date(data.effectiveFrom);
-    if (data.isActive !== undefined) updateData.isActive = Boolean(data.isActive);
-    
-    if (data.casualLeave !== undefined || data.sickLeave !== undefined || data.earnedLeave !== undefined || data.otherLeave !== undefined) {
-      const existing = await this.prisma.departmentLeaveMaster.findUnique({ where: { id } });
+    if (data.department !== undefined)
+      updateData.departmentId = data.department;
+    if (data.fiscalYear !== undefined)
+      updateData.fiscalYearId = data.fiscalYear;
+    if (data.casualLeave !== undefined)
+      updateData.casualLeave = Number(data.casualLeave);
+    if (data.sickLeave !== undefined)
+      updateData.sickLeave = Number(data.sickLeave);
+    if (data.earnedLeave !== undefined)
+      updateData.earnedLeave = Number(data.earnedLeave);
+    if (data.otherLeave !== undefined)
+      updateData.otherLeave = Number(data.otherLeave);
+    if (data.effectiveFrom !== undefined)
+      updateData.effectiveFrom = new Date(data.effectiveFrom);
+    if (data.isActive !== undefined)
+      updateData.isActive = Boolean(data.isActive);
+
+    if (
+      data.casualLeave !== undefined ||
+      data.sickLeave !== undefined ||
+      data.earnedLeave !== undefined ||
+      data.otherLeave !== undefined
+    ) {
+      const existing = await this.prisma.departmentLeaveMaster.findUnique({
+        where: { id },
+      });
       if (existing) {
-        const casual = data.casualLeave !== undefined ? Number(data.casualLeave) : existing.casualLeave;
-        const sick = data.sickLeave !== undefined ? Number(data.sickLeave) : existing.sickLeave;
-        const earned = data.earnedLeave !== undefined ? Number(data.earnedLeave) : existing.earnedLeave;
-        const other = data.otherLeave !== undefined ? Number(data.otherLeave) : existing.otherLeave;
+        const casual =
+          data.casualLeave !== undefined
+            ? Number(data.casualLeave)
+            : existing.casualLeave;
+        const sick =
+          data.sickLeave !== undefined
+            ? Number(data.sickLeave)
+            : existing.sickLeave;
+        const earned =
+          data.earnedLeave !== undefined
+            ? Number(data.earnedLeave)
+            : existing.earnedLeave;
+        const other =
+          data.otherLeave !== undefined
+            ? Number(data.otherLeave)
+            : existing.otherLeave;
         updateData.totalLeave = casual + sick + earned + other;
       }
     }

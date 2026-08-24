@@ -108,6 +108,39 @@ model JobRequisition {
   cnvExemptionReason       String?
   createdAt                DateTime             @default(now())
   candidates               Candidate[]
+  cnvRecord                CnvRecord?
+}
+
+model CnvRecord {
+  id                         String              @id @default(uuid())
+  requisitionId              String              @unique
+  requisition                JobRequisition      @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  cnvStatus                  CnvStatus           @default(PENDING_NOTIFICATION)
+  employmentExchangeOffice   String?
+  notificationDate           DateTime?
+  submissionMode             CnvSubmissionMode?
+  referenceNumber            String?
+  acknowledgementNumber      String?
+  acknowledgementDate        DateTime?
+  acknowledgementDocumentUrl String?
+  cnvRemarks                 String?
+  submittedBy                String?
+  acknowledgedBy             String?
+  notificationGeneratedAt    DateTime?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  history                    CnvHistory[]
+}
+
+model CnvHistory {
+  id          String    @id @default(uuid())
+  cnvRecordId String
+  cnvRecord   CnvRecord @relation(fields: [cnvRecordId], references: [id], onDelete: Cascade)
+  action      String
+  description String
+  performedBy String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
 }
 
 model Candidate {

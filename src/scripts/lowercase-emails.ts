@@ -6,7 +6,9 @@ import { join } from 'path';
 
 dotenv.config({ path: join(process.cwd(), '.env') });
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/aspino_erp?schema=public';
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://postgres:postgres@localhost:5432/aspino_erp?schema=public';
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -24,7 +26,9 @@ async function main() {
         data: { email: cand.email.toLowerCase().trim() },
       });
       candCount++;
-      console.log(`Updated candidate email: ${cand.email} -> ${cand.email.toLowerCase().trim()}`);
+      console.log(
+        `Updated candidate email: ${cand.email} -> ${cand.email.toLowerCase().trim()}`,
+      );
     }
   }
 
@@ -38,7 +42,9 @@ async function main() {
         data: { email: emp.email.toLowerCase().trim() },
       });
       empCount++;
-      console.log(`Updated employee email: ${emp.email} -> ${emp.email.toLowerCase().trim()}`);
+      console.log(
+        `Updated employee email: ${emp.email} -> ${emp.email.toLowerCase().trim()}`,
+      );
     }
   }
 
@@ -52,11 +58,15 @@ async function main() {
         data: { email: u.email.toLowerCase().trim() },
       });
       userCount++;
-      console.log(`Updated user email: ${u.email} -> ${u.email.toLowerCase().trim()}`);
+      console.log(
+        `Updated user email: ${u.email} -> ${u.email.toLowerCase().trim()}`,
+      );
     }
   }
 
-  console.log(`--- Email lowercase sanitization completed! Updated ${candCount} candidates, ${empCount} employees, ${userCount} users. ---`);
+  console.log(
+    `--- Email lowercase sanitization completed! Updated ${candCount} candidates, ${empCount} employees, ${userCount} users. ---`,
+  );
 }
 
 main()

@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma/prisma.service';
-import { Prisma, JobRequisitionStatus, CandidateStatus, InterviewStatus, Recommendation, OfferStatus } from '@prisma/client';
+import {
+  Prisma,
+  JobRequisitionStatus,
+  CandidateStatus,
+  InterviewStatus,
+  Recommendation,
+  OfferStatus,
+} from '@prisma/client';
 import { CreateRequisitionDto } from '../dto/create-requisition.dto';
 import { CreateCandidateDto } from '../dto/create-candidate.dto';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
@@ -10,7 +17,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 @Injectable()
 export class RecruitmentRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // Departments
   async findManyDepartments(query: PaginationQueryDto = {}) {
@@ -24,7 +31,8 @@ export class RecruitmentRepository {
       where.name = { contains: query.search, mode: 'insensitive' };
     }
     if ((query as any).isActive !== undefined) {
-      where.isActive = (query as any).isActive === 'true' || (query as any).isActive === true;
+      where.isActive =
+        (query as any).isActive === 'true' || (query as any).isActive === true;
     }
 
     const orderBy: any = {};
@@ -50,10 +58,14 @@ export class RecruitmentRepository {
         let reqCount = 0;
         let lmCount = 0;
         try {
-          reqCount = await this.prisma.jobRequisition.count({ where: { departmentId: dept.id } });
+          reqCount = await this.prisma.jobRequisition.count({
+            where: { departmentId: dept.id },
+          });
         } catch (e) {}
         try {
-          lmCount = await this.prisma.departmentLeaveMaster.count({ where: { departmentId: dept.id } });
+          lmCount = await this.prisma.departmentLeaveMaster.count({
+            where: { departmentId: dept.id },
+          });
         } catch (e) {}
         return {
           ...dept,
@@ -62,7 +74,12 @@ export class RecruitmentRepository {
       }),
     );
 
-    return { data: dataWithCounts, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data: dataWithCounts,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createDepartment(name: string, isActive: boolean = true) {
@@ -99,7 +116,8 @@ export class RecruitmentRepository {
       where.name = { contains: query.search, mode: 'insensitive' };
     }
     if ((query as any).isActive !== undefined) {
-      where.isActive = (query as any).isActive === 'true' || (query as any).isActive === true;
+      where.isActive =
+        (query as any).isActive === 'true' || (query as any).isActive === true;
     }
 
     const orderBy: any = {};
@@ -125,7 +143,11 @@ export class RecruitmentRepository {
         let trainCount = 0;
         try {
           trainCount = await this.prisma.trainingRecord.count({
-            where: { trainingType: { name: { equals: type.name, mode: 'insensitive' } } },
+            where: {
+              trainingType: {
+                name: { equals: type.name, mode: 'insensitive' },
+              },
+            },
           });
         } catch (e) {}
         return {
@@ -135,7 +157,12 @@ export class RecruitmentRepository {
       }),
     );
 
-    return { data: dataWithCounts, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data: dataWithCounts,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createTrainingType(name: string, isActive: boolean = true) {
@@ -174,7 +201,9 @@ export class RecruitmentRepository {
       where.OR = [
         { title: { contains: query.search, mode: 'insensitive' } },
         { raisedBy: { contains: query.search, mode: 'insensitive' } },
-        { department: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          department: { name: { contains: query.search, mode: 'insensitive' } },
+        },
         { jobSpecification: { contains: query.search, mode: 'insensitive' } },
       ];
     }
@@ -197,6 +226,11 @@ export class RecruitmentRepository {
       include: {
         candidates: true,
         department: true,
+        cnvRecord: {
+          include: {
+            history: { orderBy: { createdAt: 'asc' } },
+          },
+        },
         replacementForEmployee: {
           select: {
             id: true,
@@ -234,7 +268,12 @@ export class RecruitmentRepository {
       this.prisma.jobRequisition.count({ where }),
     ]);
 
-    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createRequisition(dto: CreateRequisitionDto) {
@@ -242,11 +281,12 @@ export class RecruitmentRepository {
     if (payload.cnvNotificationDate) {
       payload.cnvNotificationDate = new Date(payload.cnvNotificationDate);
     }
-    return this.prisma.jobRequisition.create({
+    const req = await this.prisma.jobRequisition.create({
       data: payload,
       include: {
         department: true,
         candidates: true,
+        cnvRecord: { include: { history: { orderBy: { createdAt: 'asc' } } } },
         replacementForEmployee: {
           select: {
             id: true,
@@ -265,6 +305,15 @@ export class RecruitmentRepository {
         },
       },
     });
+    // Auto-create CnvRecord when CNV is applicable
+    if (payload.isCnvApplicable) {
+      await this.findOrCreateCnvRecord(
+        req.id,
+        payload.cnvExchangeOffice || null,
+        'System',
+      );
+    }
+    return req;
   }
 
   async updateRequisitionStatus(id: string, status: string) {
@@ -274,6 +323,7 @@ export class RecruitmentRepository {
       include: {
         department: true,
         candidates: true,
+        cnvRecord: { include: { history: { orderBy: { createdAt: 'asc' } } } },
         replacementForEmployee: {
           select: {
             id: true,
@@ -296,18 +346,23 @@ export class RecruitmentRepository {
 
   async updateRequisition(id: string, data: any) {
     const payload: any = { ...data };
-    if (payload && payload.experienceRequired !== undefined && payload.experienceRequired !== null) {
+    if (
+      payload &&
+      payload.experienceRequired !== undefined &&
+      payload.experienceRequired !== null
+    ) {
       payload.experienceRequired = Number(payload.experienceRequired) || 0.0;
     }
     if (payload.cnvNotificationDate) {
       payload.cnvNotificationDate = new Date(payload.cnvNotificationDate);
     }
-    return this.prisma.jobRequisition.update({
+    const result = await this.prisma.jobRequisition.update({
       where: { id },
       data: payload,
       include: {
         department: true,
         candidates: true,
+        cnvRecord: { include: { history: { orderBy: { createdAt: 'asc' } } } },
         replacementForEmployee: {
           select: {
             id: true,
@@ -326,6 +381,15 @@ export class RecruitmentRepository {
         },
       },
     });
+    // If CNV toggled on for the first time, create CnvRecord
+    if (payload.isCnvApplicable && !result.cnvRecord) {
+      await this.findOrCreateCnvRecord(
+        id,
+        payload.cnvExchangeOffice || null,
+        'System',
+      );
+    }
+    return result;
   }
 
   async deleteRequisition(id: string) {
@@ -338,7 +402,10 @@ export class RecruitmentRepository {
 
   // Candidates
   async findManyCandidates(
-    query: PaginationQueryDto & { status?: string; requisitionId?: string } = {},
+    query: PaginationQueryDto & {
+      status?: string;
+      requisitionId?: string;
+    } = {},
   ) {
     const isPaginated = query.page !== undefined || query.limit !== undefined;
     const page = Number(query.page) || 1;
@@ -352,7 +419,11 @@ export class RecruitmentRepository {
         { email: { contains: query.search, mode: 'insensitive' } },
         { phone: { contains: query.search, mode: 'insensitive' } },
         { source: { contains: query.search, mode: 'insensitive' } },
-        { requisition: { title: { contains: query.search, mode: 'insensitive' } } },
+        {
+          requisition: {
+            title: { contains: query.search, mode: 'insensitive' },
+          },
+        },
       ];
     }
     if (query.status && query.status !== 'ALL') {
@@ -401,7 +472,12 @@ export class RecruitmentRepository {
       this.prisma.candidate.count({ where }),
     ]);
 
-    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createCandidate(dto: CreateCandidateDto) {
@@ -463,7 +539,9 @@ export class RecruitmentRepository {
     if (query.search) {
       where.OR = [
         { roundName: { contains: query.search, mode: 'insensitive' } },
-        { candidate: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          candidate: { name: { contains: query.search, mode: 'insensitive' } },
+        },
       ];
     }
     if (query.status && query.status !== 'ALL') {
@@ -495,7 +573,12 @@ export class RecruitmentRepository {
       this.prisma.interviewSchedule.count({ where }),
     ]);
 
-    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createSchedule(dto: CreateScheduleDto) {
@@ -509,9 +592,14 @@ export class RecruitmentRepository {
     } else if (typeof dto.panelists === 'string') {
       const trimmed = dto.panelists.trim();
       if (trimmed.startsWith('[')) {
-        try { panelistsArray = JSON.parse(trimmed); } catch (e) { }
+        try {
+          panelistsArray = JSON.parse(trimmed);
+        } catch (e) {}
       } else {
-        panelistsArray = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        panelistsArray = trimmed
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
     }
 
@@ -545,9 +633,14 @@ export class RecruitmentRepository {
       } else if (typeof data.panelists === 'string') {
         const trimmed = data.panelists.trim();
         if (trimmed.startsWith('[')) {
-          try { panelistsArray = JSON.parse(trimmed); } catch (e) { }
+          try {
+            panelistsArray = JSON.parse(trimmed);
+          } catch (e) {}
         } else {
-          panelistsArray = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+          panelistsArray = trimmed
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
         }
       }
       data.panelists = panelistsArray;
@@ -607,7 +700,9 @@ export class RecruitmentRepository {
     if (query.search) {
       where.OR = [
         { role: { contains: query.search, mode: 'insensitive' } },
-        { candidate: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          candidate: { name: { contains: query.search, mode: 'insensitive' } },
+        },
       ];
     }
     if (query.status && query.status !== 'ALL') {
@@ -655,7 +750,12 @@ export class RecruitmentRepository {
       this.prisma.offerLetter.count({ where }),
     ]);
 
-    return { data, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async findOfferById(id: string) {
@@ -782,7 +882,11 @@ export class RecruitmentRepository {
     if (data && data.email && typeof data.email === 'string') {
       data.email = data.email.toLowerCase().trim();
     }
-    if (data && data.experienceYears !== undefined && data.experienceYears !== null) {
+    if (
+      data &&
+      data.experienceYears !== undefined &&
+      data.experienceYears !== null
+    ) {
       data.experienceYears = Number(data.experienceYears) || 0.0;
     }
     const cand = await this.prisma.candidate.update({
@@ -853,7 +957,7 @@ export class RecruitmentRepository {
       orderBy: { firstName: 'asc' },
     });
 
-    const emails = employees.map(e => e.email).filter(Boolean);
+    const emails = employees.map((e) => e.email).filter(Boolean);
     const candidateData = await this.prisma.candidate.findMany({
       where: {
         email: { in: emails, mode: 'insensitive' },
@@ -869,16 +973,23 @@ export class RecruitmentRepository {
       },
     });
 
-    const offerMap = new Map(candidateData.map(c => [c.email.toLowerCase(), c.offer?.salary]));
-    const expMap = new Map(candidateData.map(c => [c.email.toLowerCase(), c.experienceYears]));
+    const offerMap = new Map(
+      candidateData.map((c) => [c.email.toLowerCase(), c.offer?.salary]),
+    );
+    const expMap = new Map(
+      candidateData.map((c) => [c.email.toLowerCase(), c.experienceYears]),
+    );
 
-    return employees.map(emp => {
+    return employees.map((emp) => {
       const emailLower = emp.email?.toLowerCase();
       const offerSalary = (emailLower && offerMap.get(emailLower)) || 0;
       const candidateExp = (emailLower && expMap.get(emailLower)) || 0;
       return {
         ...emp,
-        totalExperienceYears: emp.totalExperienceYears && emp.totalExperienceYears > 0 ? emp.totalExperienceYears : candidateExp,
+        totalExperienceYears:
+          emp.totalExperienceYears && emp.totalExperienceYears > 0
+            ? emp.totalExperienceYears
+            : candidateExp,
         dateOfJoining: emp.dateOfJoining || emp.createdAt,
         offerSalary,
       };
@@ -923,7 +1034,8 @@ export class RecruitmentRepository {
       where.name = { contains: query.search, mode: 'insensitive' };
     }
     if ((query as any).isActive !== undefined) {
-      where.isActive = (query as any).isActive === 'true' || (query as any).isActive === true;
+      where.isActive =
+        (query as any).isActive === 'true' || (query as any).isActive === true;
     }
 
     const orderBy: any = {};
@@ -955,7 +1067,11 @@ export class RecruitmentRepository {
             where: {
               OR: [
                 { fiscalYearId: fy.id },
-                { fiscalYear: { name: { equals: fy.name, mode: 'insensitive' } } },
+                {
+                  fiscalYear: {
+                    name: { equals: fy.name, mode: 'insensitive' },
+                  },
+                },
               ],
             },
           });
@@ -967,7 +1083,12 @@ export class RecruitmentRepository {
       }),
     );
 
-    return { data: dataWithCounts, total, page: isPaginated ? page : 1, limit: isPaginated ? limit : total };
+    return {
+      data: dataWithCounts,
+      total,
+      page: isPaginated ? page : 1,
+      limit: isPaginated ? limit : total,
+    };
   }
 
   async createFiscalYear(data: { name: string; isActive?: boolean }) {
@@ -979,7 +1100,10 @@ export class RecruitmentRepository {
     });
   }
 
-  async updateFiscalYear(id: string, data: { name?: string; isActive?: boolean }) {
+  async updateFiscalYear(
+    id: string,
+    data: { name?: string; isActive?: boolean },
+  ) {
     return this.prisma.fiscalYear.update({
       where: { id },
       data,
@@ -989,6 +1113,73 @@ export class RecruitmentRepository {
   async deleteFiscalYear(id: string) {
     return this.prisma.fiscalYear.delete({
       where: { id },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // CNV Record Methods
+  // ---------------------------------------------------------------------------
+
+  async findOrCreateCnvRecord(
+    requisitionId: string,
+    employmentExchangeOffice?: string | null,
+    performedBy?: string,
+  ) {
+    const existing = await this.prisma.cnvRecord.findUnique({
+      where: { requisitionId },
+      include: { history: { orderBy: { createdAt: 'asc' } } },
+    });
+    if (existing) return existing;
+
+    const record = await this.prisma.cnvRecord.create({
+      data: {
+        requisitionId,
+        cnvStatus: 'PENDING_NOTIFICATION',
+        employmentExchangeOffice: employmentExchangeOffice || null,
+        history: {
+          create: {
+            action: 'REQUISITION_CREATED',
+            description:
+              'Requisition created with CNV applicable. Pending notification to Employment Exchange.',
+            performedBy: performedBy || 'System',
+          },
+        },
+      },
+      include: { history: { orderBy: { createdAt: 'asc' } } },
+    });
+    return record;
+  }
+
+  async getCnvRecord(requisitionId: string) {
+    return this.prisma.cnvRecord.findUnique({
+      where: { requisitionId },
+      include: { history: { orderBy: { createdAt: 'asc' } } },
+    });
+  }
+
+  async updateCnvRecord(requisitionId: string, data: any) {
+    return this.prisma.cnvRecord.update({
+      where: { requisitionId },
+      data,
+      include: { history: { orderBy: { createdAt: 'asc' } } },
+    });
+  }
+
+  async createCnvHistory(
+    cnvRecordId: string,
+    action: string,
+    description: string,
+    performedBy?: string,
+    metadata?: any,
+  ) {
+    return this.prisma.cnvHistory.create({
+      data: {
+        cnvRecordId,
+        action,
+        description,
+        performedBy: performedBy || 'System',
+        metadata: metadata || undefined,
+      },
     });
   }
 }

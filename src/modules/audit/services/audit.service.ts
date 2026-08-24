@@ -8,7 +8,7 @@ import { createPaginatedResponse } from '../../../common/utils/pagination.util';
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Create an activity log record.
@@ -18,20 +18,25 @@ export class AuditService {
     try {
       return await this.prisma.activityLog.create({ data });
     } catch (error) {
-      this.logger.error(`Failed to create activity log: ${(error as Error).message}`, (error as Error).stack);
+      this.logger.error(
+        `Failed to create activity log: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
     }
   }
 
   /**
    * Fetch activity logs with pagination and filters
    */
-  async getLogs(query: PaginationQueryDto & {
-    userEmail?: string;
-    action?: string;
-    entityType?: string;
-    startDate?: string;
-    endDate?: string;
-  } = {}) {
+  async getLogs(
+    query: PaginationQueryDto & {
+      userEmail?: string;
+      action?: string;
+      entityType?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
+  ) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;

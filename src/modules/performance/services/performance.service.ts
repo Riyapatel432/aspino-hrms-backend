@@ -32,9 +32,11 @@ export class PerformanceService {
   constructor(
     private readonly performanceRepository: PerformanceRepository,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
-  async getAppraisalCycles(query: PaginationQueryDto & { status?: string } = {}) {
+  async getAppraisalCycles(
+    query: PaginationQueryDto & { status?: string } = {},
+  ) {
     const res = await this.performanceRepository.findManyCycles(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -76,7 +78,13 @@ export class PerformanceService {
     return this.performanceRepository.deleteCycle(id);
   }
 
-  async getGoals(query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {}) {
+  async getGoals(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    } = {},
+  ) {
     const res = await this.performanceRepository.findManyGoals(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
@@ -99,7 +107,13 @@ export class PerformanceService {
     return this.performanceRepository.deleteGoal(id);
   }
 
-  async getReviews(query: PaginationQueryDto & { employeeId?: string; cycleId?: string; status?: string } = {}) {
+  async getReviews(
+    query: PaginationQueryDto & {
+      employeeId?: string;
+      cycleId?: string;
+      status?: string;
+    } = {},
+  ) {
     const res = await this.performanceRepository.findManyReviews(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
