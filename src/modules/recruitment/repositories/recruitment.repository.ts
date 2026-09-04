@@ -528,7 +528,13 @@ export class RecruitmentRepository {
 
   // Schedules
   async findManySchedules(
-    query: PaginationQueryDto & { status?: string; candidateId?: string } = {},
+    query: PaginationQueryDto & {
+      status?: string;
+      candidateId?: string;
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
   ) {
     const isPaginated = query.page !== undefined || query.limit !== undefined;
     const page = Number(query.page) || 1;
@@ -549,6 +555,28 @@ export class RecruitmentRepository {
     }
     if (query.candidateId) {
       where.candidateId = query.candidateId;
+    }
+    if (query.date) {
+      const startOfDay = new Date(query.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(query.date);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.scheduledAt = {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    } else if (query.startDate || query.endDate) {
+      where.scheduledAt = {};
+      if (query.startDate) {
+        const start = new Date(query.startDate);
+        start.setHours(0, 0, 0, 0);
+        where.scheduledAt.gte = start;
+      }
+      if (query.endDate) {
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.scheduledAt.lte = end;
+      }
     }
 
     const orderBy: any = {};

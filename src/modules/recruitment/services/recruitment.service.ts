@@ -358,16 +358,61 @@ export class RecruitmentService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
+  private validateCandidateContactInfo(email?: string, phone?: string) {
+    if (email) {
+      const emailTrimmed = email.toLowerCase().trim();
+      const emailRx =
+        /^[a-zA-Z0-9]+([._-][a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+      if (!emailRx.test(emailTrimmed)) {
+        throw new BadRequestException('Please provide a valid email address.');
+      }
+      const [username, domain] = emailTrimmed.split('@');
+      if (domain === 'gmail.com' || domain === 'googlemail.com') {
+        if (!/^[a-z0-9]+(\.[a-z0-9]+)*$/i.test(username)) {
+          throw new BadRequestException(
+            'Sorry, only letters (a-z), numbers (0-9), and periods (.) are allowed.',
+          );
+        }
+      }
+    }
+    if (phone) {
+      const phoneTrimmed = phone.trim();
+      if (!/^\d{10}$/.test(phoneTrimmed)) {
+        throw new BadRequestException('Phone number must be exactly 10 digits.');
+      }
+    }
+  }
+
   async createCandidate(dto: CreateCandidateDto) {
     if (dto.email) {
       dto.email = dto.email.toLowerCase().trim();
     }
-    const existing = await this.prisma.candidate.findUnique({
-      where: { email: dto.email },
+    if (dto.phone) {
+      dto.phone = dto.phone.trim();
+    }
+
+    this.validateCandidateContactInfo(dto.email, dto.phone);
+
+    // Duplicate email check (case-insensitive)
+    const existingEmail = await this.prisma.candidate.findFirst({
+      where: { email: { equals: dto.email, mode: 'insensitive' } },
     });
-    if (existing) {
+    if (existingEmail) {
       throw new ConflictException('Candidate with this email already exists.');
     }
+
+    // Duplicate phone check
+    if (dto.phone) {
+      const existingPhone = await this.prisma.candidate.findFirst({
+        where: { phone: dto.phone },
+      });
+      if (existingPhone) {
+        throw new ConflictException(
+          'Candidate with this phone number already exists.',
+        );
+      }
+    }
+
     const candidate = await this.recruitmentRepository.createCandidate(dto);
     this.logger.log(`Candidate sourced: "${dto.name}" (id=${candidate.id})`);
     return candidate;
@@ -383,23 +428,59 @@ export class RecruitmentService {
   }
 
   async updateCandidate(id: string, data: Prisma.CandidateUpdateInput) {
+    let emailStr: string | undefined;
+    let phoneStr: string | undefined;
+
     if (data.email) {
-      const emailStr =
-        typeof data.email === 'string' ? data.email : data.email.set;
+      emailStr =
+        typeof data.email === 'string'
+          ? data.email.toLowerCase().trim()
+          : (data.email as any).set?.toLowerCase().trim();
       if (emailStr) {
-        const existing = await this.prisma.candidate.findFirst({
-          where: {
-            email: emailStr,
-            id: { not: id },
-          },
-        });
-        if (existing) {
-          throw new ConflictException(
-            'Candidate with this email already exists.',
-          );
-        }
+        (data as any).email = emailStr;
       }
     }
+
+    if (data.phone) {
+      phoneStr =
+        typeof data.phone === 'string'
+          ? data.phone.trim()
+          : (data.phone as any).set?.trim();
+      if (phoneStr) {
+        (data as any).phone = phoneStr;
+      }
+    }
+
+    this.validateCandidateContactInfo(emailStr, phoneStr);
+
+    if (emailStr) {
+      const existing = await this.prisma.candidate.findFirst({
+        where: {
+          email: { equals: emailStr, mode: 'insensitive' },
+          id: { not: id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException(
+          'Candidate with this email already exists.',
+        );
+      }
+    }
+
+    if (phoneStr) {
+      const existingPhone = await this.prisma.candidate.findFirst({
+        where: {
+          phone: phoneStr,
+          id: { not: id },
+        },
+      });
+      if (existingPhone) {
+        throw new ConflictException(
+          'Candidate with this phone number already exists.',
+        );
+      }
+    }
+
     return this.recruitmentRepository.updateCandidate(id, data);
   }
 
@@ -413,7 +494,13 @@ export class RecruitmentService {
   // ---------------------------------------------------------------------------
 
   async getSchedules(
-    query: PaginationQueryDto & { status?: string; candidateId?: string } = {},
+    query: PaginationQueryDto & {
+      status?: string;
+      candidateId?: string;
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
   ) {
     const res = await this.recruitmentRepository.findManySchedules(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
@@ -427,6 +514,27 @@ export class RecruitmentService {
     ) {
       throw new BadRequestException('Round name cannot be 0 or empty.');
     }
+
+    const scheduledDate = new Date(dto.scheduledAt);
+    if (isNaN(scheduledDate.getTime())) {
+      throw new BadRequestException('Invalid scheduled interview date/time.');
+    }
+
+    // Verify chronological interview order: subsequent rounds must be after previous rounds
+    const existingSchedules = await this.prisma.interviewSchedule.findMany({
+      where: { candidateId: dto.candidateId },
+      orderBy: { scheduledAt: 'desc' },
+    });
+
+    if (existingSchedules.length > 0) {
+      const latestSchedule = existingSchedules[0];
+      if (scheduledDate <= new Date(latestSchedule.scheduledAt)) {
+        throw new BadRequestException(
+          `Subsequent interview round must be scheduled after previous round "${latestSchedule.roundName}" (${new Date(latestSchedule.scheduledAt).toLocaleString()}).`,
+        );
+      }
+    }
+
     const schedule = await this.recruitmentRepository.createSchedule(dto);
     // Auto-update candidate status in DB to INTERVIEWING when interview is scheduled
     const candidate = await this.prisma.candidate.findUnique({
@@ -455,6 +563,47 @@ export class RecruitmentService {
         throw new BadRequestException('Round name cannot be 0 or empty.');
       }
     }
+
+    if (data.scheduledAt !== undefined) {
+      const scheduledDate = new Date(data.scheduledAt as any);
+      if (isNaN(scheduledDate.getTime())) {
+        throw new BadRequestException('Invalid scheduled interview date/time.');
+      }
+      const existing = await this.prisma.interviewSchedule.findUnique({
+        where: { id },
+      });
+      if (existing) {
+        const otherSchedules = await this.prisma.interviewSchedule.findMany({
+          where: { candidateId: existing.candidateId, id: { not: id } },
+          orderBy: { attemptNumber: 'asc' },
+        });
+
+        const earlierSchedules = otherSchedules.filter(
+          (s) => s.attemptNumber < existing.attemptNumber,
+        );
+        if (earlierSchedules.length > 0) {
+          const latestEarlier = earlierSchedules[earlierSchedules.length - 1];
+          if (scheduledDate <= new Date(latestEarlier.scheduledAt)) {
+            throw new BadRequestException(
+              `Interview round must be scheduled after previous round "${latestEarlier.roundName}" (${new Date(latestEarlier.scheduledAt).toLocaleString()}).`,
+            );
+          }
+        }
+
+        const laterSchedules = otherSchedules.filter(
+          (s) => s.attemptNumber > existing.attemptNumber,
+        );
+        if (laterSchedules.length > 0) {
+          const earliestLater = laterSchedules[0];
+          if (scheduledDate >= new Date(earliestLater.scheduledAt)) {
+            throw new BadRequestException(
+              `Interview round must be scheduled before subsequent round "${earliestLater.roundName}" (${new Date(earliestLater.scheduledAt).toLocaleString()}).`,
+            );
+          }
+        }
+      }
+    }
+
     return this.recruitmentRepository.updateSchedule(id, data);
   }
 
@@ -467,19 +616,72 @@ export class RecruitmentService {
   // ---------------------------------------------------------------------------
 
   async createFeedback(dto: CreateFeedbackDto) {
-    const feedback = await this.recruitmentRepository.createFeedback(dto);
+    const schedule = await this.prisma.interviewSchedule.findUnique({
+      where: { id: dto.scheduleId },
+      include: { feedbacks: true },
+    });
+    if (!schedule) {
+      throw new NotFoundException('Interview schedule not found.');
+    }
+    const now = new Date();
+    if (new Date(schedule.scheduledAt) > now) {
+      throw new BadRequestException(
+        'Feedback cannot be submitted before the scheduled interview time.',
+      );
+    }
+
+    // Prevent duplicate feedbacks by the same panelist for the same interview round
+    const existingFeedback = schedule.feedbacks?.find((f) => {
+      if (dto.panelistId && f.panelistId) {
+        return f.panelistId === dto.panelistId;
+      }
+      return (
+        f.panelistName?.trim().toLowerCase() ===
+        dto.panelistName?.trim().toLowerCase()
+      );
+    });
+
+    let feedback;
+    if (existingFeedback) {
+      feedback = await this.recruitmentRepository.updateFeedback(
+        existingFeedback.id,
+        {
+          panelistName: dto.panelistName,
+          panelistId: dto.panelistId || null,
+          rating: Number(dto.rating),
+          comments: dto.comments,
+          recommendation: dto.recommendation as any,
+        },
+      );
+      this.logger.log(
+        `Interview feedback updated for schedule id=${dto.scheduleId} by ${dto.panelistName}`,
+      );
+    } else {
+      feedback = await this.recruitmentRepository.createFeedback(dto);
+      this.logger.log(
+        `Interview feedback recorded for schedule id=${dto.scheduleId} by ${dto.panelistName}`,
+      );
+    }
+
     // Atomically mark the schedule as COMPLETED after feedback is captured
     await this.recruitmentRepository.updateScheduleStatus(
       dto.scheduleId,
       'COMPLETED',
     );
-    this.logger.log(
-      `Interview feedback recorded for schedule id=${dto.scheduleId} by ${dto.panelistName}`,
-    );
     return feedback;
   }
 
   async updateFeedback(id: string, data: any) {
+    if (data.scheduleId) {
+      const schedule = await this.prisma.interviewSchedule.findUnique({
+        where: { id: data.scheduleId },
+      });
+      if (schedule && new Date(schedule.scheduledAt) > new Date()) {
+        throw new BadRequestException(
+          'Feedback cannot be submitted before the scheduled interview time.',
+        );
+      }
+    }
     const updated = await this.recruitmentRepository.updateFeedback(id, data);
     this.logger.log(`Interview feedback updated: id=${id}`);
     return updated;

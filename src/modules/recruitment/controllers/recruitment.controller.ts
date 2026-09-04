@@ -219,7 +219,13 @@ export class RecruitmentController {
   @Get('schedules')
   async getSchedules(
     @Query()
-    query: PaginationQueryDto & { status?: string; candidateId?: string },
+    query: PaginationQueryDto & {
+      status?: string;
+      candidateId?: string;
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+    },
   ) {
     return this.recruitmentService.getSchedules(query);
   }

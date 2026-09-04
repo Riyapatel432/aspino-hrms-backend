@@ -18,9 +18,19 @@ export class CreateCandidateDto {
     typeof value === 'string' ? value.toLowerCase().trim() : value,
   )
   @IsEmail({}, { message: 'Please provide a valid email address.' })
+  @Matches(
+    /^[a-zA-Z0-9]+([._-][a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/,
+    {
+      message:
+        'Please provide a valid email address. Special characters like % are not allowed.',
+    },
+  )
   @IsNotEmpty({ message: 'Email address is required.' })
   email: string;
 
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString({ message: 'Phone must be a string.' })
   @IsNotEmpty({ message: 'Phone number is required.' })
   @Matches(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits.' })
