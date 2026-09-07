@@ -273,11 +273,10 @@ export class PayrollController {
     @Query('year') year: string,
     @Res() res: Response,
   ) {
-    const file = await this.payrollService.generateBankTransferFile(
-      parseInt(month),
-      parseInt(year),
-    );
-    res.setHeader('Content-Type', 'text/csv');
+    const m = month ? parseInt(month) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year) : new Date().getFullYear();
+    const file = await this.payrollService.generateBankTransferFile(m, y);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="${file.filename}"`,
@@ -290,10 +289,60 @@ export class PayrollController {
     @Query('month') month: string,
     @Query('year') year: string,
   ) {
-    return this.payrollService.generateStatutoryReports(
-      parseInt(month),
-      parseInt(year),
+    const m = month ? parseInt(month) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year) : new Date().getFullYear();
+    return this.payrollService.generateStatutoryReports(m, y);
+  }
+
+  @Get('export/statutory/pf-ecr')
+  async exportPfEcr(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Res() res: Response,
+  ) {
+    const m = month ? parseInt(month) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year) : new Date().getFullYear();
+    const file = await this.payrollService.generatePfEcrCsv(m, y);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
     );
+    return res.send(file.content);
+  }
+
+  @Get('export/statutory/esi-return')
+  async exportEsiReturn(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Res() res: Response,
+  ) {
+    const m = month ? parseInt(month) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year) : new Date().getFullYear();
+    const file = await this.payrollService.generateEsiReturnCsv(m, y);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    return res.send(file.content);
+  }
+
+  @Get('export/statutory/pt-report')
+  async exportPtReport(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Res() res: Response,
+  ) {
+    const m = month ? parseInt(month) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year) : new Date().getFullYear();
+    const file = await this.payrollService.generatePtReportCsv(m, y);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    return res.send(file.content);
   }
 
   @Get('export/form16/:employeeId')

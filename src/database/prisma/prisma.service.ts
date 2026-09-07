@@ -570,8 +570,7 @@ export class PrismaService
             "clearedBy" TEXT,
             CONSTRAINT "ClearanceTask_pkey" PRIMARY KEY ("id")
           );
-          await this.$executeRawUnsafe(\`ALTER TABLE IF EXISTS "ClearanceTask" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;\`);
-          try { await this.$executeRawUnsafe(\`ALTER TABLE IF EXISTS "ClearanceTask" ALTER COLUMN "department" DROP NOT NULL;\`); } catch(e) {}
+          ALTER TABLE IF EXISTS "ClearanceTask" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;
 
           CREATE TABLE IF NOT EXISTS "FullAndFinalSettlement" (
             "id" TEXT NOT NULL,
