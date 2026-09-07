@@ -739,14 +739,14 @@ export class PayrollService {
 
     // Fallback: If still no payslips, fetch active employees and structures
     if (payslips.length === 0) {
-      const activeEmps = await this.prisma.employee.findMany({
-        where: { status: 'ACTIVE' },
-        include: { salaryStructures: { where: { isActive: true } } },
-      });
+      const activeEmps = await this.repo.getDirectEmployeesForPayroll();
 
       if (activeEmps.length > 0) {
         payslips = activeEmps.map((emp) => {
-          const struct = emp.salaryStructures[0];
+          const struct =
+            emp.salaryStructures?.find(
+              (s: any) => s.month === targetMonth && s.year === targetYear,
+            ) || emp.salaryStructures?.[0];
           const basic = struct?.basicSalary || 35000;
           const hra = struct?.hraAmount || 15000;
           const da = struct?.da || 0;
@@ -819,12 +819,12 @@ export class PayrollService {
     }
 
     if (payslips.length === 0) {
-      const activeEmps = await this.prisma.employee.findMany({
-        where: { status: 'ACTIVE' },
-        include: { salaryStructures: { where: { isActive: true } } },
-      });
+      const activeEmps = await this.repo.getDirectEmployeesForPayroll();
       payslips = activeEmps.map((emp) => {
-        const struct = emp.salaryStructures[0];
+        const struct =
+          emp.salaryStructures?.find(
+            (s: any) => s.month === targetMonth && s.year === targetYear,
+          ) || emp.salaryStructures?.[0];
         const basic = struct?.basicSalary || 35000;
         const da = struct?.da || 0;
         const gross =
