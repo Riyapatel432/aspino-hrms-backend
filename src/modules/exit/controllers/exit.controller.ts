@@ -14,16 +14,16 @@ import { ExitService } from '../services/exit.service';
 import { InitiateExitDto } from '../dto/initiate-exit.dto';
 import { ProcessSettlementDto } from '../dto/process-settlement.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionGuard } from '../../casl/guards/permission.guard';
+import { RequirePermission } from '../../casl/decorators/require-permission.decorator';
 
 @Controller('exit')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class ExitController {
   constructor(private readonly exitService: ExitService) {}
 
   @Get('exits')
+  @RequirePermission('read', 'exit')
   async getExits(
     @Query() query: PaginationQueryDto & { status?: string; type?: string },
   ) {
@@ -31,11 +31,13 @@ export class ExitController {
   }
 
   @Post('exits/initiate')
+  @RequirePermission('create', 'exit')
   async initiateExit(@Body() dto: InitiateExitDto) {
     return this.exitService.initiateExit(dto);
   }
 
   @Patch('clearances/:id/status')
+  @RequirePermission('update', 'exit')
   async updateClearance(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -45,21 +47,25 @@ export class ExitController {
   }
 
   @Post('settlements')
+  @RequirePermission('create', 'exit')
   async processSettlement(@Body() dto: ProcessSettlementDto) {
     return this.exitService.processSettlement(dto);
   }
 
   @Get('settlements/:exitProcessId/calculate')
+  @RequirePermission('read', 'exit')
   async calculateSettlement(@Param('exitProcessId') exitProcessId: string) {
     return this.exitService.calculateSettlement(exitProcessId);
   }
 
   @Post('exits/:id/complete')
+  @RequirePermission('update', 'exit')
   async completeExit(@Param('id') id: string) {
     return this.exitService.completeExit(id);
   }
 
   @Patch('exits/:id')
+  @RequirePermission('update', 'exit')
   async updateExit(
     @Param('id') id: string,
     @Body()
@@ -75,6 +81,7 @@ export class ExitController {
   }
 
   @Delete('exits/:id')
+  @RequirePermission('delete', 'exit')
   async deleteExit(@Param('id') id: string) {
     return this.exitService.deleteExit(id);
   }

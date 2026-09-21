@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../../users/repositories/user.repository';
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
@@ -20,6 +21,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    private readonly caslAbilityFactory: CaslAbilityFactory,
   ) {}
 
   async loginAdmin(loginDto: AdminLoginDto) {
@@ -38,10 +40,11 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role.toLowerCase(),
+      role: user.roleRelation ? user.roleRelation.name : user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+    const permissionData = await this.caslAbilityFactory.getUserPermissionsPayload(user.id);
 
     return {
       message: 'Login successful',
@@ -50,9 +53,15 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role.toLowerCase(),
+        role: user.roleRelation ? user.roleRelation.name : user.role,
+        roleDisplayName: user.roleRelation?.displayName || user.role,
       },
+      ...permissionData,
     };
+  }
+
+  async getUserPermissions(userId: string) {
+    return this.caslAbilityFactory.getUserPermissionsPayload(userId);
   }
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {

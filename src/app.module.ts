@@ -16,10 +16,14 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { PerformanceModule } from './modules/performance/performance.module';
 import { RecruitmentModule } from './modules/recruitment/recruitment.module';
 import { TrainingModule } from './modules/training/training.module';
+import { CaslModule } from './modules/casl/casl.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 @Module({
   imports: [
     PrismaModule,
+    CaslModule,
+    RolesModule,
     UsersModule,
     AuthModule,
     EmployeesModule,

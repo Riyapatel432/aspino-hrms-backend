@@ -59,7 +59,6 @@ export class EmployeesController {
       department: employee.department?.name || '',
       designation: employee.designation,
       dateOfJoining: employee.dateOfJoining,
-      location: employee.location,
       phone: employee.phone,
       status: employee.status,
       photoUrl,
@@ -244,15 +243,14 @@ export class EmployeesController {
         .stroke();
     };
 
-    drawField('EMPLOYEE ID', employee.employeeId, 185);
+    drawField('EMPLOYEE ID', employee.employeeId, 187);
     drawField(
       'DEPARTMENT',
       (employee.department?.name || '').toUpperCase(),
-      199,
+      202,
     );
-    drawField('JOIN DATE', joinDate, 213);
-    drawField('LOCATION', (employee.location || '—').toUpperCase(), 227);
-    drawField('PHONE', employee.phone || '—', 241);
+    drawField('JOIN DATE', joinDate, 217);
+    drawField('PHONE', employee.phone || '—', 232);
 
     // ── Footer ─────────────────────────────────────────────────────────────
     const footerY = 275;

@@ -3,6 +3,7 @@ import { PrismaService } from '../../../database/prisma/prisma.service';
 import { Prisma, AttendanceStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { buildEmployeeSearchConditions } from '../../../common/utils/search.util';
+import { CaptureAttendanceDto } from '../dto/capture-attendance.dto';
 
 function parseCsvDateToUTC(rawDate: string): Date | null {
   if (!rawDate || typeof rawDate !== 'string') return null;
@@ -663,33 +664,30 @@ export class AttendanceRepository {
     return { data, total, page, limit };
   }
 
-  async captureAttendance(dto: {
-    employeeId: string;
-    date: string;
-    checkIn?: string;
-    checkOut?: string;
-    status?: string;
-    shiftId?: string;
-    shiftName?: string;
-    totalWorkHours?: number;
-    otHours?: number;
-    lateHours?: number;
-    earlyGoingHours?: number;
-    presentDay?: number;
-    isHalfDay?: boolean;
-    isSundayPresent?: boolean;
-    isFullNightPresent?: boolean;
-    isHolidayPresent?: boolean;
-    captureMethod?: string;
-  }) {
+  async captureAttendance(dto: CaptureAttendanceDto) {
+    let targetEmployeeId = dto.employeeId;
+    const emp = await this.prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id: dto.employeeId },
+          { employeeId: dto.employeeId },
+          { userId: dto.employeeId },
+        ],
+      },
+    });
+    if (emp) {
+      targetEmployeeId = emp.id;
+    }
+
     const dateObj = new Date(dto.date);
     const existing = await this.prisma.attendance.findFirst({
-      where: { employeeId: dto.employeeId, date: dateObj },
+      where: { employeeId: targetEmployeeId, date: dateObj },
     });
 
     const dataPayload = {
       checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
-      checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+      checkOut: dto.checkOut ? new Date(dto.checkOut) : (dto.checkOut === null ? null : undefined),
+      breakMinutes: dto.breakMinutes !== undefined ? dto.breakMinutes : undefined,
       status: (dto.status || 'PRESENT') as AttendanceStatus,
       shiftId: dto.shiftId || null,
       shiftName: dto.shiftName || null,
@@ -706,18 +704,53 @@ export class AttendanceRepository {
     };
 
     if (existing) {
-      return this.prisma.attendance.update({
-        where: { id: existing.id },
-        data: dataPayload as any,
-      });
+      try {
+        return await this.prisma.attendance.update({
+          where: { id: existing.id },
+          data: dataPayload as any,
+          include: {
+            employee: { include: { department: true } },
+            shift: true,
+          },
+        });
+      } catch (err) {
+        const { breakMinutes, ...fallbackPayload } = dataPayload;
+        return await this.prisma.attendance.update({
+          where: { id: existing.id },
+          data: fallbackPayload as any,
+          include: {
+            employee: { include: { department: true } },
+            shift: true,
+          },
+        });
+      }
     } else {
-      return this.prisma.attendance.create({
-        data: {
-          employeeId: dto.employeeId,
-          date: dateObj,
-          ...dataPayload,
-        } as any,
-      });
+      try {
+        return await this.prisma.attendance.create({
+          data: {
+            employeeId: targetEmployeeId,
+            date: dateObj,
+            ...dataPayload,
+          } as any,
+          include: {
+            employee: { include: { department: true } },
+            shift: true,
+          },
+        });
+      } catch (err) {
+        const { breakMinutes, ...fallbackPayload } = dataPayload;
+        return await this.prisma.attendance.create({
+          data: {
+            employeeId: targetEmployeeId,
+            date: dateObj,
+            ...fallbackPayload,
+          } as any,
+          include: {
+            employee: { include: { department: true } },
+            shift: true,
+          },
+        });
+      }
     }
   }
 
@@ -755,6 +788,9 @@ export class AttendanceRepository {
       isFullNightPresent?: boolean;
       isHolidayPresent?: boolean;
       captureMethod?: string;
+      breakMinutes?: number;
+      onDutyMinutes?: number;
+      breakDurationMinutes?: number;
     }>,
   ) {
     const results = {
@@ -1107,10 +1143,27 @@ export class AttendanceRepository {
         }
 
         // 1-Hour Allowed Break Policy: If break exceeds 60 minutes, the excess is flagged as NOT ALLOWED
+        const explicitBreakMins =
+          rec.breakMinutes !== undefined && !isNaN(Number(rec.breakMinutes))
+            ? Number(rec.breakMinutes)
+            : null;
+        const explicitOnDutyMins =
+          rec.onDutyMinutes !== undefined && !isNaN(Number(rec.onDutyMinutes))
+            ? Number(rec.onDutyMinutes)
+            : 0;
+
+        if (explicitBreakMins !== null) {
+          totalBreakMins = explicitBreakMins;
+        }
+
+        const effectiveBreakMins = Math.max(
+          0,
+          totalBreakMins - explicitOnDutyMins,
+        );
         const ALLOWED_BREAK_MINS = 60;
         const excessBreakMins = Math.max(
           0,
-          totalBreakMins - ALLOWED_BREAK_MINS,
+          effectiveBreakMins - ALLOWED_BREAK_MINS,
         );
         const breakDeductionHours =
           excessBreakMins > 0

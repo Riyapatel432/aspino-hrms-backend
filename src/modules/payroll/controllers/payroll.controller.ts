@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { PayrollService } from '../services/payroll.service';
@@ -21,29 +22,37 @@ import {
   InitiatePayrollRunDto,
   ApprovePayrollRunDto,
 } from '../dto/payroll-run.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PermissionGuard } from '../../casl/guards/permission.guard';
+import { RequirePermission } from '../../casl/decorators/require-permission.decorator';
 
 @Controller('payroll')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class PayrollController {
   constructor(private readonly payrollService: PayrollService) {}
 
   // Employees List Dropdown
   @Get('employees')
+  @RequirePermission('read', 'employee')
   async getEmployees() {
     return this.payrollService.getEmployeesForDropdown();
   }
 
   @Get('banks')
+  @RequirePermission('read', 'bank')
   async getBanks() {
     return this.payrollService.getBanks();
   }
 
   // Salary Structure
   @Post('salary-structure')
+  @RequirePermission('create', 'payroll')
   async setupSalaryStructure(@Body() dto: CreateSalaryStructureDto) {
     return this.payrollService.setupSalaryStructure(dto);
   }
 
   @Get('salary-matrix')
+  @RequirePermission('read', 'payroll')
   async getSalaryMatrix(
     @Query('department') department?: string,
     @Query('search') search?: string,
@@ -52,12 +61,14 @@ export class PayrollController {
   }
 
   @Post('salary-matrix/batch-save')
+  @RequirePermission('update', 'payroll')
   async batchSaveSalaryMatrix(@Body() body: { records: any[] }) {
     const records = Array.isArray(body) ? body : body?.records || [];
     return this.payrollService.batchSaveSalaryMatrix(records);
   }
 
   @Post('salary-structure/copy-previous')
+  @RequirePermission('create', 'payroll')
   async copyPreviousMonthSalaries(
     @Body()
     body: {
@@ -78,12 +89,14 @@ export class PayrollController {
   }
 
   @Post('salary-structure/bulk-import')
+  @RequirePermission('create', 'payroll')
   async bulkImportSalaryStructures(@Body() body: { records: any[] }) {
     const records = Array.isArray(body) ? body : body?.records || [];
     return this.payrollService.bulkImportSalaryStructures(records);
   }
 
   @Get('salary-structure/template')
+  @RequirePermission('read', 'payroll')
   async getSalaryTemplate(@Res() res: Response) {
     const csvContent = [
       'Employee Code / ID,Basic Salary,HRA Amount,DA,Conveyance,Special Allowance,Statutory Bonus,Reimbursements,Gross Salary,PF Amount,ESI Amount,PT Amount,Tax Regime',
@@ -101,6 +114,7 @@ export class PayrollController {
   }
 
   @Get('salary-structure/all')
+  @RequirePermission('read', 'payroll')
   async getAllSalaryStructures(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -120,22 +134,26 @@ export class PayrollController {
   }
 
   @Post('salary-structure/:id/delete')
+  @RequirePermission('delete', 'payroll')
   async deleteSalaryStructure(@Param('id') id: string) {
     return this.payrollService.deleteSalaryStructure(id);
   }
 
   @Get('salary-structure/:employeeId')
+  @RequirePermission('read', 'payroll')
   async getSalaryStructure(@Param('employeeId') employeeId: string) {
     return this.payrollService.getSalaryStructure(employeeId);
   }
 
   // HRA Rent Receipts
   @Post('hra/rent-receipt')
+  @RequirePermission('create', 'payroll')
   async submitRentReceipt(@Body() dto: SubmitRentReceiptDto) {
     return this.payrollService.submitRentReceipt(dto);
   }
 
   @Get(['hra/rent-receipt', 'hra/rent-receipts'])
+  @RequirePermission('read', 'payroll')
   async getRentReceipts(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -155,6 +173,7 @@ export class PayrollController {
   }
 
   @Patch('hra/rent-receipt/:id/verify')
+  @RequirePermission('update', 'payroll')
   async verifyRentReceipt(
     @Param('id') id: string,
     @Body() dto: VerifyRentReceiptDto,
@@ -164,11 +183,13 @@ export class PayrollController {
 
   // Tax Declarations
   @Post('tax-declaration')
+  @RequirePermission('create', 'payroll')
   async submitTaxDeclaration(@Body() dto: TaxDeclarationDto) {
     return this.payrollService.submitTaxDeclaration(dto);
   }
 
   @Get(['tax-declaration', 'tax-declarations', 'hra/tax-declarations'])
+  @RequirePermission('read', 'payroll')
   async getTaxDeclarations(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -191,11 +212,13 @@ export class PayrollController {
 
   // Loans & Advances
   @Post('loan')
+  @RequirePermission('create', 'payroll')
   async createLoan(@Body() dto: CreateLoanDto) {
     return this.payrollService.createLoan(dto);
   }
 
   @Get(['loan', 'loans'])
+  @RequirePermission('read', 'payroll')
   async getActiveLoans(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -216,11 +239,13 @@ export class PayrollController {
 
   // Monthly Payroll Run
   @Post('run')
+  @RequirePermission('create', 'payroll')
   async runMonthlyPayroll(@Body() dto: InitiatePayrollRunDto) {
     return this.payrollService.runMonthlyPayroll(dto.month, dto.year);
   }
 
   @Post('run/approve')
+  @RequirePermission('approve', 'payroll')
   async approvePayrollRun(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -234,6 +259,7 @@ export class PayrollController {
   }
 
   @Get('run')
+  @RequirePermission('read', 'payroll')
   async getPayrollRun(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -243,6 +269,7 @@ export class PayrollController {
 
   // Payslips
   @Get('payslips')
+  @RequirePermission('read', 'payroll')
   async getPayslips(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -262,12 +289,14 @@ export class PayrollController {
   }
 
   @Get('payslip/:id')
+  @RequirePermission('read', 'payroll')
   async getPayslipById(@Param('id') id: string) {
     return this.payrollService.getPayslipById(id);
   }
 
   // Export File Endpoints
   @Get('export/bank-transfer')
+  @RequirePermission('export', 'payroll')
   async exportBankTransfer(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -285,6 +314,7 @@ export class PayrollController {
   }
 
   @Get('export/statutory')
+  @RequirePermission('export', 'payroll')
   async exportStatutoryReports(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -295,6 +325,7 @@ export class PayrollController {
   }
 
   @Get('export/statutory/pf-ecr')
+  @RequirePermission('export', 'payroll')
   async exportPfEcr(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -312,6 +343,7 @@ export class PayrollController {
   }
 
   @Get('export/statutory/esi-return')
+  @RequirePermission('export', 'payroll')
   async exportEsiReturn(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -329,6 +361,7 @@ export class PayrollController {
   }
 
   @Get('export/statutory/pt-report')
+  @RequirePermission('export', 'payroll')
   async exportPtReport(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -346,6 +379,7 @@ export class PayrollController {
   }
 
   @Get('export/form16/:employeeId')
+  @RequirePermission('export', 'payroll')
   async generateForm16(
     @Param('employeeId') employeeId: string,
     @Query('financialYear') financialYear: string = '2026-2027',
@@ -354,6 +388,7 @@ export class PayrollController {
   }
 
   @Post('loan/:id/repay')
+  @RequirePermission('update', 'payroll')
   async recordLoanRepayment(
     @Param('id') id: string,
     @Body() body: { amount: number },

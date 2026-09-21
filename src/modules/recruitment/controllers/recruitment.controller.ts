@@ -31,16 +31,16 @@ import { extname, join } from 'path';
 import * as fs from 'fs';
 import { generateOfferLetterPdf } from '../services/pdf-generator.helper';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionGuard } from '../../casl/guards/permission.guard';
+import { RequirePermission } from '../../casl/decorators/require-permission.decorator';
 
 @Controller('recruitment')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class RecruitmentController {
   constructor(private readonly recruitmentService: RecruitmentService) {}
 
   @Post('candidates/upload-resume')
+  @RequirePermission('create', 'recruitment')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -63,16 +63,19 @@ export class RecruitmentController {
 
   // 0. Departments
   @Get('departments')
+  @RequirePermission('read', 'department')
   async getDepartments(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getDepartments(query);
   }
 
   @Post('departments')
+  @RequirePermission('create', 'department')
   async createDepartment(@Body() body: { name: string; isActive?: boolean }) {
     return this.recruitmentService.createDepartment(body.name, body.isActive);
   }
 
   @Patch('departments/:id')
+  @RequirePermission('update', 'department')
   async updateDepartment(
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
@@ -85,22 +88,26 @@ export class RecruitmentController {
   }
 
   @Delete('departments/:id')
+  @RequirePermission('delete', 'department')
   async deleteDepartment(@Param('id') id: string) {
     return this.recruitmentService.deleteDepartment(id);
   }
 
   // Training Types
   @Get('trainingTypes')
+  @RequirePermission('read', 'training')
   async getTrainingTypesLegacy(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getTrainingTypes(query);
   }
 
   @Get('training-types')
+  @RequirePermission('read', 'training')
   async getTrainingTypes(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getTrainingTypes(query);
   }
 
   @Post('trainingTypes')
+  @RequirePermission('create', 'training')
   async createTrainingTypeLegacy(
     @Body() body: { name: string; isActive?: boolean },
   ) {
@@ -108,11 +115,13 @@ export class RecruitmentController {
   }
 
   @Post('training-types')
+  @RequirePermission('create', 'training')
   async createTrainingType(@Body() body: { name: string; isActive?: boolean }) {
     return this.recruitmentService.createTrainingType(body.name, body.isActive);
   }
 
   @Patch('trainingTypes/:id')
+  @RequirePermission('update', 'training')
   async updateTrainingTypeLegacy(
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
@@ -125,6 +134,7 @@ export class RecruitmentController {
   }
 
   @Patch('training-types/:id')
+  @RequirePermission('update', 'training')
   async updateTrainingType(
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
@@ -137,22 +147,131 @@ export class RecruitmentController {
   }
 
   @Delete('trainingTypes/:id')
+  @RequirePermission('delete', 'training')
   async deleteTrainingTypeLegacy(@Param('id') id: string) {
     return this.recruitmentService.deleteTrainingType(id);
   }
 
   @Delete('training-types/:id')
+  @RequirePermission('delete', 'training')
   async deleteTrainingType(@Param('id') id: string) {
     return this.recruitmentService.deleteTrainingType(id);
   }
 
+  // Interview Rounds Master
+  @Get('interview-rounds')
+  @RequirePermission('read', 'recruitment')
+  async getInterviewRounds(@Query() query: PaginationQueryDto) {
+    return this.recruitmentService.getInterviewRounds(query);
+  }
+
+  @Get('interviewRounds')
+  @RequirePermission('read', 'recruitment')
+  async getInterviewRoundsAlias(@Query() query: PaginationQueryDto) {
+    return this.recruitmentService.getInterviewRounds(query);
+  }
+
+  @Post('interview-rounds')
+  @RequirePermission('create', 'recruitment')
+  async createInterviewRound(
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.recruitmentService.createInterviewRound(
+      body.name,
+      body.description,
+      body.order,
+      body.isActive,
+    );
+  }
+
+  @Post('interviewRounds')
+  @RequirePermission('create', 'recruitment')
+  async createInterviewRoundAlias(
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.recruitmentService.createInterviewRound(
+      body.name,
+      body.description,
+      body.order,
+      body.isActive,
+    );
+  }
+
+  @Patch('interview-rounds/:id')
+  @RequirePermission('update', 'recruitment')
+  async updateInterviewRound(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.recruitmentService.updateInterviewRound(
+      id,
+      body.name,
+      body.description,
+      body.order,
+      body.isActive,
+    );
+  }
+
+  @Patch('interviewRounds/:id')
+  @RequirePermission('update', 'recruitment')
+  async updateInterviewRoundAlias(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.recruitmentService.updateInterviewRound(
+      id,
+      body.name,
+      body.description,
+      body.order,
+      body.isActive,
+    );
+  }
+
+  @Delete('interview-rounds/:id')
+  @RequirePermission('delete', 'recruitment')
+  async deleteInterviewRound(@Param('id') id: string) {
+    return this.recruitmentService.deleteInterviewRound(id);
+  }
+
+  @Delete('interviewRounds/:id')
+  @RequirePermission('delete', 'recruitment')
+  async deleteInterviewRoundAlias(@Param('id') id: string) {
+    return this.recruitmentService.deleteInterviewRound(id);
+  }
+
   // 1. Requisitions & Replacement Employees
   @Get('employees')
+  @RequirePermission('read', 'employee')
   async getEmployeesForReplacement() {
     return this.recruitmentService.getEmployeesForReplacement();
   }
 
   @Get('requisitions')
+  @RequirePermission('read', 'recruitment')
   async getRequisitions(
     @Query()
     query: PaginationQueryDto & { status?: string; departmentId?: string },
@@ -161,11 +280,13 @@ export class RecruitmentController {
   }
 
   @Post('requisitions')
+  @RequirePermission('create', 'recruitment')
   async createRequisition(@Body() dto: CreateRequisitionDto) {
     return this.recruitmentService.createRequisition(dto);
   }
 
   @Patch('requisitions/:id/status')
+  @RequirePermission('update', 'recruitment')
   async updateRequisitionStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -174,17 +295,20 @@ export class RecruitmentController {
   }
 
   @Patch('requisitions/:id')
+  @RequirePermission('update', 'recruitment')
   async updateRequisition(@Param('id') id: string, @Body() body: any) {
     return this.recruitmentService.updateRequisition(id, body);
   }
 
   @Delete('requisitions/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteRequisition(@Param('id') id: string) {
     return this.recruitmentService.deleteRequisition(id);
   }
 
   // 2. Candidates
   @Get('candidates')
+  @RequirePermission('read', 'recruitment')
   async getCandidates(
     @Query()
     query: PaginationQueryDto & { status?: string; requisitionId?: string },
@@ -193,11 +317,13 @@ export class RecruitmentController {
   }
 
   @Post('candidates')
+  @RequirePermission('create', 'recruitment')
   async createCandidate(@Body() dto: CreateCandidateDto) {
     return this.recruitmentService.createCandidate(dto);
   }
 
   @Patch('candidates/:id/status')
+  @RequirePermission('update', 'recruitment')
   async updateCandidateStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -206,17 +332,20 @@ export class RecruitmentController {
   }
 
   @Patch('candidates/:id')
+  @RequirePermission('update', 'recruitment')
   async updateCandidate(@Param('id') id: string, @Body() body: any) {
     return this.recruitmentService.updateCandidate(id, body);
   }
 
   @Delete('candidates/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteCandidate(@Param('id') id: string) {
     return this.recruitmentService.deleteCandidate(id);
   }
 
   // 3. Scheduling
   @Get('schedules')
+  @RequirePermission('read', 'recruitment')
   async getSchedules(
     @Query()
     query: PaginationQueryDto & {
@@ -231,58 +360,69 @@ export class RecruitmentController {
   }
 
   @Post('schedules')
+  @RequirePermission('create', 'recruitment')
   async createSchedule(@Body() dto: CreateScheduleDto) {
     return this.recruitmentService.createSchedule(dto);
   }
 
   @Patch('schedules/:id')
+  @RequirePermission('update', 'recruitment')
   async updateSchedule(@Param('id') id: string, @Body() body: any) {
     return this.recruitmentService.updateSchedule(id, body);
   }
 
   @Delete('schedules/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteSchedule(@Param('id') id: string) {
     return this.recruitmentService.deleteSchedule(id);
   }
 
   // 4. Feedback
   @Post('feedbacks')
+  @RequirePermission('create', 'recruitment')
   async createFeedback(@Body() dto: CreateFeedbackDto) {
     return this.recruitmentService.createFeedback(dto);
   }
 
   @Patch('feedbacks/:id')
+  @RequirePermission('update', 'recruitment')
   async updateFeedback(@Param('id') id: string, @Body() body: any) {
     return this.recruitmentService.updateFeedback(id, body);
   }
 
   @Delete('feedbacks/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteFeedback(@Param('id') id: string) {
     return this.recruitmentService.deleteFeedback(id);
   }
 
   // 5. Offers
   @Get('offers')
+  @RequirePermission('read', 'recruitment')
   async getOffers(@Query() query: PaginationQueryDto & { status?: string }) {
     return this.recruitmentService.getOffers(query);
   }
 
   @Post('offers')
+  @RequirePermission('create', 'recruitment')
   async createOffer(@Body() dto: CreateOfferDto) {
     return this.recruitmentService.createOffer(dto);
   }
 
   @Patch('offers/:id')
+  @RequirePermission('update', 'recruitment')
   async updateOffer(@Param('id') id: string, @Body() body: any) {
     return this.recruitmentService.updateOffer(id, body);
   }
 
   @Delete('offers/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteOffer(@Param('id') id: string) {
     return this.recruitmentService.deleteOffer(id);
   }
 
   @Get('offers/:id/pdf')
+  @RequirePermission('export', 'recruitment')
   async downloadOfferPdf(@Param('id') id: string, @Res() res) {
     const offer = await this.recruitmentService.getOfferById(id);
     if (!offer) {
@@ -322,22 +462,26 @@ export class RecruitmentController {
   }
 
   @Post('offers/:id/accept')
+  @RequirePermission('update', 'recruitment')
   async acceptOffer(@Param('id') id: string) {
     return this.recruitmentService.acceptOffer(id);
   }
 
   // 6. Fiscal Years (Financial Year Master)
   @Get('fiscal-years')
+  @RequirePermission('read', 'recruitment')
   async getFiscalYears(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getFiscalYears(query);
   }
 
   @Post('fiscal-years')
+  @RequirePermission('create', 'recruitment')
   async createFiscalYear(@Body() body: { name: string; isActive?: boolean }) {
     return this.recruitmentService.createFiscalYear(body);
   }
 
   @Patch('fiscal-years/:id')
+  @RequirePermission('update', 'recruitment')
   async updateFiscalYear(
     @Param('id') id: string,
     @Body() body: { name?: string; isActive?: boolean },
@@ -346,6 +490,7 @@ export class RecruitmentController {
   }
 
   @Delete('fiscal-years/:id')
+  @RequirePermission('delete', 'recruitment')
   async deleteFiscalYear(@Param('id') id: string) {
     return this.recruitmentService.deleteFiscalYear(id);
   }
@@ -355,11 +500,13 @@ export class RecruitmentController {
   // ---------------------------------------------------------------------------
 
   @Get('requisitions/:id/cnv')
+  @RequirePermission('read', 'recruitment')
   async getCnvDetails(@Param('id') id: string) {
     return this.recruitmentService.getCnvDetails(id);
   }
 
   @Post('requisitions/:id/cnv/generate')
+  @RequirePermission('update', 'recruitment')
   async generateCnvNotification(
     @Param('id') id: string,
     @Body() body: { performedBy?: string },
@@ -371,6 +518,7 @@ export class RecruitmentController {
   }
 
   @Post('requisitions/:id/cnv/submit')
+  @RequirePermission('update', 'recruitment')
   @UseInterceptors(
     FileInterceptor('document', {
       storage: diskStorage({
@@ -413,6 +561,7 @@ export class RecruitmentController {
   }
 
   @Post('requisitions/:id/cnv/acknowledge')
+  @RequirePermission('update', 'recruitment')
   @UseInterceptors(
     FileInterceptor('document', {
       storage: diskStorage({

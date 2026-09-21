@@ -173,7 +173,6 @@ export class PrismaService
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "qrToken" TEXT DEFAULT gen_random_uuid()::text;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "phone" TEXT;
-          ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "location" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankId" INTEGER;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "accountNumber" TEXT;
@@ -222,6 +221,7 @@ export class PrismaService
         await this.$executeRawUnsafe(`
           ALTER TABLE IF EXISTS "InterviewSchedule" ADD COLUMN IF NOT EXISTS "isReschedule" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "InterviewSchedule" ADD COLUMN IF NOT EXISTS "attemptNumber" INTEGER DEFAULT 1;
+          ALTER TABLE IF EXISTS "InterviewSchedule" ADD COLUMN IF NOT EXISTS "interviewRoundId" TEXT;
           ALTER TABLE IF EXISTS "InterviewFeedback" ADD COLUMN IF NOT EXISTS "panelistId" TEXT;
         `);
         try {
@@ -338,6 +338,37 @@ export class PrismaService
         await this.$executeRawUnsafe(
           `CREATE UNIQUE INDEX IF NOT EXISTS "TrainingType_name_key" ON "TrainingType"("name");`,
         );
+        await this.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "InterviewRound" (
+            "id" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "description" TEXT,
+            "order" INTEGER DEFAULT 1,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "InterviewRound_pkey" PRIMARY KEY ("id")
+          );
+        `);
+        await this.$executeRawUnsafe(
+          `CREATE UNIQUE INDEX IF NOT EXISTS "InterviewRound_name_key" ON "InterviewRound"("name");`,
+        );
+        // Seed default rounds if table is empty
+        try {
+          const roundCount = await (this as any).interviewRound?.count();
+          if (roundCount === 0) {
+            const defaultRounds = [
+              { name: 'Screening / Initial Round', description: 'Initial HR / Screening evaluation', order: 1 },
+              { name: 'Technical Round 1', description: 'Core technical and domain knowledge assessment', order: 2 },
+              { name: 'Technical Round 2', description: 'Advanced technical, coding & architecture assessment', order: 3 },
+              { name: 'Managerial Round', description: 'Leadership, cultural fit, and project alignment', order: 4 },
+              { name: 'HR Round', description: 'Final HR, compensation, and policy discussion', order: 5 },
+            ];
+            for (const r of defaultRounds) {
+              await (this as any).interviewRound.create({ data: r });
+            }
+          }
+        } catch (e) {}
         await this.$executeRawUnsafe(`
           CREATE TABLE IF NOT EXISTS "DepartmentLeaveMaster" (
             "id" TEXT NOT NULL,
