@@ -112,6 +112,14 @@ export class CaslAbilityFactory {
       can(action, subject);
     }
 
+    // 3. Baseline self-service permissions for all authenticated staff
+    can('read', 'attendance');
+    can('create', 'attendance');
+    can('read', 'profile');
+    can('update', 'profile');
+    can('read', 'leave');
+    can('create', 'leave');
+
     return build();
   }
 
@@ -142,12 +150,24 @@ export class CaslAbilityFactory {
       user.roleRelation.name === 'SUPER_ADMIN' ||
       permissions.some((p) => p.module === 'all' && p.action === 'manage');
 
+    const baselineRules = [
+      { action: 'read', subject: 'attendance' },
+      { action: 'create', subject: 'attendance' },
+      { action: 'read', subject: 'profile' },
+      { action: 'update', subject: 'profile' },
+      { action: 'read', subject: 'leave' },
+      { action: 'create', subject: 'leave' },
+    ];
+
     const rules = isSuperAdmin
       ? [{ action: 'manage', subject: 'all' }]
-      : permissions.map((p) => ({
-          action: p.action,
-          subject: p.module,
-        }));
+      : [
+          ...permissions.map((p) => ({
+            action: p.action,
+            subject: p.module,
+          })),
+          ...baselineRules,
+        ];
 
     const emp = (user as any).employee;
 

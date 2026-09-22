@@ -194,8 +194,8 @@ export class AttendanceService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
-  async captureAttendance(dto: CaptureAttendanceDto) {
-    return this.attendanceRepository.captureAttendance(dto);
+  async captureAttendance(dto: CaptureAttendanceDto, user?: any) {
+    return this.attendanceRepository.captureAttendance(dto, user);
   }
 
   async bulkImportAttendance(records: any[]) {

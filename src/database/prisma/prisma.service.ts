@@ -258,6 +258,7 @@ export class PrismaService
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "isFullNightPresent" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "isHolidayPresent" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "captureMethod" TEXT DEFAULT 'BIOMETRIC';
+          ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "breakMinutes" INTEGER DEFAULT 0;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "breakMisuseMinutes" INTEGER DEFAULT 0;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "breakDeductionHours" DOUBLE PRECISION DEFAULT 0.0;
           ALTER TABLE IF EXISTS "Attendance" ADD COLUMN IF NOT EXISTS "hasBreakComplaint" BOOLEAN DEFAULT false;

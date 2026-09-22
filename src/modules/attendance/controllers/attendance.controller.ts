@@ -157,8 +157,8 @@ export class AttendanceController {
 
   @Post('attendance')
   @RequirePermission('create', 'attendance')
-  async captureAttendance(@Body() dto: CaptureAttendanceDto) {
-    return this.attendanceService.captureAttendance(dto);
+  async captureAttendance(@Body() dto: CaptureAttendanceDto, @Req() req: any) {
+    return this.attendanceService.captureAttendance(dto, req?.user);
   }
 
   @Post('attendance/bulk-import')
