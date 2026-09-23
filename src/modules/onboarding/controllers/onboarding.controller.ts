@@ -43,7 +43,7 @@ export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
   @Get('employees')
-  @RequirePermission('read', 'employee')
+  @RequirePermission('read', 'onboarding')
   async getEmployees(
     @Query()
     query: PaginationQueryDto & { status?: string; department?: string },
@@ -52,7 +52,7 @@ export class OnboardingController {
   }
 
   @Get('banks')
-  @RequirePermission('read', 'employee')
+  @RequirePermission('read', 'onboarding')
   async getBanks() {
     return this.onboardingService.getBanks();
   }
@@ -111,7 +111,7 @@ export class OnboardingController {
   }
 
   @Patch('employees/:id/probation')
-  @RequirePermission('update', 'employee')
+  @RequirePermission('update', 'onboarding')
   async updateProbation(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -129,13 +129,13 @@ export class OnboardingController {
   }
 
   @Patch('employees/:id')
-  @RequirePermission('update', 'employee')
+  @RequirePermission('update', 'onboarding')
   async updateEmployee(@Param('id') id: string, @Body() body: any) {
     return this.onboardingService.updateEmployee(id, body);
   }
 
   @Delete('employees/:id')
-  @RequirePermission('delete', 'employee')
+  @RequirePermission('delete', 'onboarding')
   async deleteEmployee(@Param('id') id: string) {
     return this.onboardingService.deleteEmployee(id);
   }

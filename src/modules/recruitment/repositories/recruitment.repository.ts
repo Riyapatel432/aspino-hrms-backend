@@ -723,8 +723,119 @@ export class RecruitmentRepository {
       this.prisma.interviewSchedule.count({ where }),
     ]);
 
+    // Extract all panelist IDs/names across data
+    const allPanelistRawIds: string[] = [];
+    data.forEach((s) => {
+      if (Array.isArray(s.panelists)) {
+        s.panelists.forEach((p) => {
+          if (p && typeof p === 'string') {
+            const cleaned = p.replace(/[{}\[\]\\"]/g, '').trim();
+            cleaned.split(',').forEach((sub) => {
+              const str = sub.trim();
+              if (str) allPanelistRawIds.push(str);
+            });
+          }
+        });
+      }
+    });
+
+    const uniqueIds = Array.from(new Set(allPanelistRawIds));
+    const [matchingUsers, matchingEmployees] = uniqueIds.length > 0
+      ? await Promise.all([
+          this.prisma.user.findMany({
+            where: {
+              OR: [
+                { id: { in: uniqueIds } },
+                { name: { in: uniqueIds, mode: 'insensitive' } },
+                { email: { in: uniqueIds, mode: 'insensitive' } },
+              ],
+            },
+            select: { id: true, name: true, email: true, role: true },
+          }),
+          this.prisma.employee.findMany({
+            where: {
+              OR: [
+                { id: { in: uniqueIds } },
+                { userId: { in: uniqueIds } },
+                { employeeId: { in: uniqueIds } },
+                { email: { in: uniqueIds, mode: 'insensitive' } },
+              ],
+            },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeId: true,
+              userId: true,
+              email: true,
+              designation: true,
+            },
+          }),
+        ])
+      : [[], []];
+
+    const enrichedData = data.map((sched) => {
+      const pRaw = sched.panelists || [];
+      const parsedIds: string[] = [];
+      pRaw.forEach((p) => {
+        if (p && typeof p === 'string') {
+          p.replace(/[{}\[\]\\"]/g, '')
+            .split(',')
+            .forEach((sub) => {
+              const str = sub.trim();
+              if (str) parsedIds.push(str);
+            });
+        }
+      });
+
+      const panelistDetails = parsedIds.map((item) => {
+        const u = matchingUsers.find(
+          (user) =>
+            user.id === item ||
+            user.name.toLowerCase() === item.toLowerCase() ||
+            user.email.toLowerCase() === item.toLowerCase(),
+        );
+        if (u) {
+          return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+          };
+        }
+        const emp = matchingEmployees.find(
+          (e) =>
+            e.id === item ||
+            e.userId === item ||
+            e.employeeId === item ||
+            (e.email && e.email.toLowerCase() === item.toLowerCase()),
+        );
+        if (emp) {
+          return {
+            id: emp.id,
+            name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.employeeId,
+            email: emp.email,
+            role: emp.designation || 'EMPLOYEE',
+          };
+        }
+        return {
+          id: item,
+          name: item,
+          role: 'PANELIST',
+        };
+      });
+
+      const panelistNames = panelistDetails.map((pd) => pd.name);
+
+      return {
+        ...sched,
+        panelistDetails,
+        panelistNames,
+      };
+    });
+
     return {
-      data,
+      data: enrichedData,
       total,
       page: isPaginated ? page : 1,
       limit: isPaginated ? limit : total,
@@ -1159,6 +1270,59 @@ export class RecruitmentRepository {
         offerSalary,
       };
     });
+  }
+
+  async findInterviewPanelists() {
+    const [users, employees] = await Promise.all([
+      this.prisma.user.findMany({
+        select: { id: true, name: true, email: true, role: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.employee.findMany({
+        where: {
+          status: { notIn: ['RELIEVED'] },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          employeeId: true,
+          userId: true,
+          email: true,
+          designation: true,
+        },
+        orderBy: { firstName: 'asc' },
+      }),
+    ]);
+
+    const userMap = new Map<string, any>();
+    users.forEach((u) => {
+      userMap.set(u.id, {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+      });
+    });
+
+    employees.forEach((emp) => {
+      const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.employeeId;
+      if (emp.userId && userMap.has(emp.userId)) {
+        const existing = userMap.get(emp.userId);
+        if (!existing.name || existing.name === existing.email) {
+          existing.name = fullName;
+        }
+      } else {
+        userMap.set(emp.id, {
+          id: emp.id,
+          name: fullName,
+          email: emp.email,
+          role: emp.designation || 'EMPLOYEE',
+        });
+      }
+    });
+
+    return Array.from(userMap.values());
   }
 
   // Employee creation helper

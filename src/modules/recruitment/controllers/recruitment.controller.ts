@@ -160,19 +160,19 @@ export class RecruitmentController {
 
   // Interview Rounds Master
   @Get('interview-rounds')
-  @RequirePermission('read', 'recruitment')
+  @RequirePermission('read', 'interview_rounds')
   async getInterviewRounds(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getInterviewRounds(query);
   }
 
   @Get('interviewRounds')
-  @RequirePermission('read', 'recruitment')
+  @RequirePermission('read', 'interview_rounds')
   async getInterviewRoundsAlias(@Query() query: PaginationQueryDto) {
     return this.recruitmentService.getInterviewRounds(query);
   }
 
   @Post('interview-rounds')
-  @RequirePermission('create', 'recruitment')
+  @RequirePermission('create', 'interview_rounds')
   async createInterviewRound(
     @Body()
     body: {
@@ -191,7 +191,7 @@ export class RecruitmentController {
   }
 
   @Post('interviewRounds')
-  @RequirePermission('create', 'recruitment')
+  @RequirePermission('create', 'interview_rounds')
   async createInterviewRoundAlias(
     @Body()
     body: {
@@ -210,7 +210,7 @@ export class RecruitmentController {
   }
 
   @Patch('interview-rounds/:id')
-  @RequirePermission('update', 'recruitment')
+  @RequirePermission('update', 'interview_rounds')
   async updateInterviewRound(
     @Param('id') id: string,
     @Body()
@@ -231,7 +231,7 @@ export class RecruitmentController {
   }
 
   @Patch('interviewRounds/:id')
-  @RequirePermission('update', 'recruitment')
+  @RequirePermission('update', 'interview_rounds')
   async updateInterviewRoundAlias(
     @Param('id') id: string,
     @Body()
@@ -252,13 +252,13 @@ export class RecruitmentController {
   }
 
   @Delete('interview-rounds/:id')
-  @RequirePermission('delete', 'recruitment')
+  @RequirePermission('delete', 'interview_rounds')
   async deleteInterviewRound(@Param('id') id: string) {
     return this.recruitmentService.deleteInterviewRound(id);
   }
 
   @Delete('interviewRounds/:id')
-  @RequirePermission('delete', 'recruitment')
+  @RequirePermission('delete', 'interview_rounds')
   async deleteInterviewRoundAlias(@Param('id') id: string) {
     return this.recruitmentService.deleteInterviewRound(id);
   }
@@ -344,6 +344,18 @@ export class RecruitmentController {
   }
 
   // 3. Scheduling
+  @Get('interview-panelists')
+  @RequirePermission('read', 'recruitment')
+  async getInterviewPanelists() {
+    return this.recruitmentService.getInterviewPanelists();
+  }
+
+  @Get('panelists')
+  @RequirePermission('read', 'recruitment')
+  async getPanelistsAlias() {
+    return this.recruitmentService.getInterviewPanelists();
+  }
+
   @Get('schedules')
   @RequirePermission('read', 'recruitment')
   async getSchedules(

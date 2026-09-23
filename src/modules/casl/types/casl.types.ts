@@ -41,7 +41,22 @@ export type AppSubject =
   | 'audit'
   | 'users'
   | 'roles'
-  | 'permissions';
+  | 'permissions'
+  | 'interview_rounds'
+  | 'leave_master'
+  | 'shift'
+  | 'shift_roster'
+  | 'accounts'
+  | 'activity_logs'
+  | 'customer_ledger'
+  | 'dashboard'
+  | 'financial_reports'
+  | 'packing_material'
+  | 'product_sub_category'
+  | 'qc_specification'
+  | 'supplier_ledger'
+  | 'uom'
+  | 'vouchers';
 
 export type AppAbility = MongoAbility<[Action, AppSubject]>;
 

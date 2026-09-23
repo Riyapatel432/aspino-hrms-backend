@@ -110,6 +110,59 @@ export class CaslAbilityFactory {
       const subject = perm.module as AppSubject;
 
       can(action, subject);
+
+      // Parse name like "read-training-type"
+      if (perm.name) {
+        const parts = perm.name.split(/[-_:]/);
+        if (parts.length >= 2) {
+          const act = parts[0] as Action;
+          const sub = parts.slice(1).join('_') as AppSubject;
+          const subHyphen = parts.slice(1).join('-') as AppSubject;
+          can(act, sub);
+          can(act, subHyphen);
+        }
+      }
+
+      // Explicit module aliases
+      if (subject === ('training' as any) || subject === ('training_type' as any)) {
+        can(action, 'training' as any);
+        can(action, 'training_type' as any);
+      }
+      if (subject === ('interview_rounds' as any)) {
+        can(action, 'interview_rounds' as any);
+      }
+      if (subject === ('financial_year' as any)) {
+        can(action, 'financial_year' as any);
+      }
+      if (subject === ('leave_master' as any)) {
+        can(action, 'leave_master' as any);
+      }
+      if (subject === ('onboarding' as any)) {
+        can(action, 'onboarding' as any);
+        can(action, 'employee' as any);
+      }
+      if (subject === ('resignation_clearance' as any)) {
+        can(action, 'resignation_clearance' as any);
+        can(action, 'exit' as any);
+      }
+      if (subject === ('fnf_settlement' as any)) {
+        can(action, 'fnf_settlement' as any);
+        can(action, 'exit' as any);
+      }
+      if (subject === ('relieving_letters' as any)) {
+        can(action, 'relieving_letters' as any);
+        can(action, 'exit' as any);
+      }
+      if (
+        subject === ('salary_structures' as any) ||
+        subject === ('hra_tax' as any) ||
+        subject === ('loans' as any) ||
+        subject === ('monthly_run' as any) ||
+        subject === ('payslips' as any) ||
+        subject === ('reports' as any)
+      ) {
+        can(action, 'payroll' as any);
+      }
     }
 
     // 3. Baseline self-service permissions for all authenticated staff

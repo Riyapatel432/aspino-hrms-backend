@@ -620,6 +620,10 @@ export class RecruitmentService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
+  async getInterviewPanelists() {
+    return this.recruitmentRepository.findInterviewPanelists();
+  }
+
   async createSchedule(dto: CreateScheduleDto) {
     let masterRound: any = null;
     if (dto.interviewRoundId) {
