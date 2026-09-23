@@ -19,6 +19,20 @@ import { TrainingModule } from './modules/training/training.module';
 import { CaslModule } from './modules/casl/casl.module';
 import { RolesModule } from './modules/roles/roles.module';
 
+import { GatePassModule } from './modules/gate-pass/gate-pass.module';
+import { PassCategoryModule } from './modules/pass-category/pass-category.module';
+import { BankModule } from './modules/bank/bank.module';
+import { SupplierModule } from './modules/supplier/supplier.module';
+import { VendorModule } from './modules/vendor/vendor.module';
+import { CustomerModule } from './modules/customer/customer.module';
+import { ProductCategoryModule } from './modules/product-category/product-category.module';
+import { ProductSubCategoryModule } from './modules/product-sub-category/product-sub-category.module';
+import { ProductModule } from './modules/product/product.module';
+import { UomModule } from './modules/uom/uom.module';
+import { PackingMaterialModule } from './modules/packing-material/packing-material.module';
+import { QcSpecificationModule } from './modules/qc-specification/qc-specification.module';
+import { StorageLocationModule } from './modules/storage-location/storage-location.module';
+
 @Module({
   imports: [
     PrismaModule,
@@ -36,6 +50,19 @@ import { RolesModule } from './modules/roles/roles.module';
     PerformanceModule,
     RecruitmentModule,
     TrainingModule,
+    GatePassModule,
+    PassCategoryModule,
+    BankModule,
+    SupplierModule,
+    VendorModule,
+    CustomerModule,
+    ProductCategoryModule,
+    ProductSubCategoryModule,
+    ProductModule,
+    UomModule,
+    PackingMaterialModule,
+    QcSpecificationModule,
+    StorageLocationModule,
     RouterModule.register([
       {
         path: 'staff-hrms',

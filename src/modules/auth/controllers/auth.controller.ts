@@ -16,7 +16,7 @@ import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
-@Controller('auth')
+@Controller(['auth', 'auth/admin'])
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

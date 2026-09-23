@@ -1,3 +1,4 @@
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from '../services/payroll.service';
@@ -18,7 +19,7 @@ describe('PayrollController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PayrollController],
-      providers: [{ provide: PayrollService, useValue: service }],
+      providers: [{ provide: PayrollService, useValue: service }, { provide: CaslAbilityFactory, useValue: { createForUser: jest.fn(), getUserPermissionsPayload: jest.fn() } }],
     }).compile();
 
     controller = module.get<PayrollController>(PayrollController);

@@ -1,3 +1,4 @@
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from '../services/auth.service';
@@ -25,11 +26,25 @@ describe('AuthController', () => {
         .fn()
         .mockResolvedValue({ message: 'Password changed successfully' }),
       getAllUsers: jest.fn().mockResolvedValue({ data: [], total: 0 }),
+      getUserPermissions: jest.fn().mockResolvedValue({
+        role: 'admin',
+        permissions: [],
+        rules: [],
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: authService }],
+      providers: [
+        { provide: AuthService, useValue: authService },
+        {
+          provide: CaslAbilityFactory,
+          useValue: {
+            createForUser: jest.fn(),
+            getUserPermissionsPayload: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
