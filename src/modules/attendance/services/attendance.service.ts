@@ -3,6 +3,7 @@ import { AttendanceRepository } from '../repositories/attendance.repository';
 import { PrismaService } from '../../../database/prisma/prisma.service';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { createPaginatedResponse } from '../../../common/utils/pagination.util';
+import { CaptureAttendanceDto } from '../dto/capture-attendance.dto';
 
 export interface UpdateShiftDto {
   name?: string;
@@ -172,31 +173,29 @@ export class AttendanceService {
       month?: string | number;
       year?: string | number;
     } = {},
+    user?: any,
   ) {
+    if (user && (user.role?.toUpperCase() === 'EMPLOYEE' || user.role?.toUpperCase() === 'USER')) {
+      const emp = await this.prisma.employee.findFirst({
+        where: {
+          OR: [
+            { userId: user.id },
+            { id: user.employeeId || '' },
+            { email: { equals: user.email, mode: 'insensitive' } },
+            { firstName: { equals: user.name, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (emp) {
+        query.employeeId = emp.id;
+      }
+    }
     const res = await this.attendanceRepository.findManyAttendance(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
-  async captureAttendance(dto: {
-    employeeId: string;
-    date: string;
-    checkIn?: string;
-    checkOut?: string;
-    status?: string;
-    shiftId?: string;
-    shiftName?: string;
-    totalWorkHours?: number;
-    otHours?: number;
-    lateHours?: number;
-    earlyGoingHours?: number;
-    presentDay?: number;
-    isHalfDay?: boolean;
-    isSundayPresent?: boolean;
-    isFullNightPresent?: boolean;
-    isHolidayPresent?: boolean;
-    captureMethod?: string;
-  }) {
-    return this.attendanceRepository.captureAttendance(dto);
+  async captureAttendance(dto: CaptureAttendanceDto, user?: any) {
+    return this.attendanceRepository.captureAttendance(dto, user);
   }
 
   async bulkImportAttendance(records: any[]) {

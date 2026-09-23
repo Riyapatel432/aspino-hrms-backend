@@ -1,9 +1,19 @@
-import { IsString, IsNotEmpty, IsDateString, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDateString,
+  IsOptional,
+  MinLength,
+} from 'class-validator';
 
 export class CreateScheduleDto {
   @IsString({ message: 'Candidate ID must be a string.' })
   @IsNotEmpty({ message: 'A candidate must be selected.' })
   candidateId: string;
+
+  @IsOptional()
+  @IsString({ message: 'Interview Round ID must be a string.' })
+  interviewRoundId?: string;
 
   @IsString({ message: 'Round name must be a string.' })
   @IsNotEmpty({

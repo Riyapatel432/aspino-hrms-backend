@@ -48,7 +48,7 @@ export class RecruitmentService {
   constructor(
     private readonly recruitmentRepository: RecruitmentRepository,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   // ---------------------------------------------------------------------------
   // 0. Departments
@@ -114,17 +114,17 @@ export class RecruitmentService {
       reqCount = await this.prisma.jobRequisition.count({
         where: { departmentId: id },
       });
-    } catch (e) {}
+    } catch (e) { }
     try {
       empCount = await this.prisma.employee.count({
         where: { departmentId: id },
       });
-    } catch (e) {}
+    } catch (e) { }
     try {
       lmCount = await this.prisma.departmentLeaveMaster.count({
         where: { departmentId: id },
       });
-    } catch (e) {}
+    } catch (e) { }
 
     if (reqCount > 0 || empCount > 0 || lmCount > 0) {
       throw new ConflictException(
@@ -209,7 +209,7 @@ export class RecruitmentService {
           trainingType: { name: { equals: type.name, mode: 'insensitive' } },
         },
       });
-    } catch (e) {}
+    } catch (e) { }
     if (trainCount > 0) {
       throw new ConflictException(
         `Training type "${type.name}" is already in use by employee trainings and cannot be deleted.`,
@@ -223,6 +223,120 @@ export class RecruitmentService {
       if (error.code === 'P2003' || error.code === 'P2014') {
         throw new ConflictException(
           `Training type "${type.name}" is already in use and cannot be deleted.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Interview Rounds Master
+  // ---------------------------------------------------------------------------
+
+  async getInterviewRounds(query: PaginationQueryDto = {}) {
+    const res = await this.recruitmentRepository.findManyInterviewRounds(query);
+    return createPaginatedResponse(res.data, res.total, res.page, res.limit);
+  }
+
+  async createInterviewRound(
+    name: string,
+    description?: string,
+    order: number = 1,
+    isActive: boolean = true,
+  ) {
+    if (!name?.trim()) {
+      throw new BadRequestException('Interview round name is required.');
+    }
+    const trimmed = name.trim();
+    const existing = await (this.prisma as any).interviewRound.findFirst({
+      where: { name: { equals: trimmed, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Interview round "${trimmed}" already exists in Master.`,
+      );
+    }
+    const round = await this.recruitmentRepository.createInterviewRound(
+      trimmed,
+      description?.trim() || undefined,
+      Number(order) || 1,
+      isActive,
+    );
+    this.logger.log(`InterviewRound created: "${trimmed}" (id=${round.id})`);
+    return round;
+  }
+
+  async updateInterviewRound(
+    id: string,
+    name?: string,
+    description?: string,
+    order?: number,
+    isActive?: boolean,
+  ) {
+    if (name !== undefined) {
+      if (!name?.trim()) {
+        throw new BadRequestException('Interview round name cannot be empty.');
+      }
+      const trimmed = name.trim();
+      const existing = await (this.prisma as any).interviewRound.findFirst({
+        where: {
+          name: { equals: trimmed, mode: 'insensitive' },
+          id: { not: id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException(
+          `Interview round "${trimmed}" already exists in Master.`,
+        );
+      }
+    }
+    const round = await this.recruitmentRepository.updateInterviewRound(id, {
+      name: name !== undefined ? name.trim() : undefined,
+      description:
+        description !== undefined
+          ? description?.trim() || undefined
+          : undefined,
+      order: order !== undefined ? Number(order) || 1 : undefined,
+      isActive,
+    });
+    this.logger.log(
+      `InterviewRound updated: id=${id}, name="${round.name}", isActive=${round.isActive}`,
+    );
+    return round;
+  }
+
+  async deleteInterviewRound(id: string) {
+    const round = await (this.prisma as any).interviewRound.findUnique({
+      where: { id },
+    });
+    if (!round) return;
+
+    let schedCount = 0;
+    try {
+      schedCount = await this.prisma.interviewSchedule.count({
+        where: {
+          OR: [
+            { interviewRoundId: id },
+            { roundName: id },
+            { roundName: { equals: round.name, mode: 'insensitive' } },
+          ],
+        },
+      });
+    } catch (e) {}
+
+    if (schedCount > 0) {
+      throw new ConflictException(
+        `Interview round "${round.name}" is already used in ${schedCount} scheduled interview(s) and cannot be deleted. You may deactivate it instead.`,
+      );
+    }
+
+    try {
+      await this.recruitmentRepository.deleteInterviewRound(id);
+      this.logger.log(`InterviewRound deleted: id=${id}`);
+    } catch (error) {
+      if (error.code === 'P2003' || error.code === 'P2014') {
+        throw new ConflictException(
+          `Interview round "${round.name}" is in use and cannot be deleted.`,
         );
       }
       throw error;
@@ -506,7 +620,33 @@ export class RecruitmentService {
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }
 
+  async getInterviewPanelists() {
+    return this.recruitmentRepository.findInterviewPanelists();
+  }
+
   async createSchedule(dto: CreateScheduleDto) {
+    let masterRound: any = null;
+    if (dto.interviewRoundId) {
+      masterRound = await (this.prisma as any).interviewRound?.findUnique({
+        where: { id: dto.interviewRoundId },
+      });
+    }
+    if (!masterRound && dto.roundName) {
+      masterRound = await (this.prisma as any).interviewRound?.findFirst({
+        where: {
+          OR: [
+            { id: dto.roundName.trim() },
+            { name: { equals: dto.roundName.trim(), mode: 'insensitive' as Prisma.QueryMode } },
+          ],
+        },
+      });
+    }
+
+    if (masterRound) {
+      dto.interviewRoundId = masterRound.id;
+      dto.roundName = masterRound.id; // Store Master ID in roundName
+    }
+
     if (
       !dto.roundName?.trim() ||
       dto.roundName.trim() === '0' ||
@@ -520,17 +660,50 @@ export class RecruitmentService {
       throw new BadRequestException('Invalid scheduled interview date/time.');
     }
 
+    // Verify candidate is not already scheduled for the same round
+    const existingSameRound: any = await this.prisma.interviewSchedule.findFirst({
+      where: {
+        candidateId: dto.candidateId,
+        OR: [
+          ...(dto.interviewRoundId ? [{ interviewRoundId: dto.interviewRoundId }] : []),
+          { roundName: { equals: dto.roundName.trim(), mode: 'insensitive' as Prisma.QueryMode } },
+          ...(masterRound
+            ? [
+                { roundName: { equals: masterRound.name.trim(), mode: 'insensitive' as Prisma.QueryMode } },
+                { interviewRoundId: masterRound.id },
+              ]
+            : []),
+        ],
+        status: { not: 'CANCELLED' },
+      },
+      include: { interviewRound: true } as any,
+    });
+
+    if (existingSameRound) {
+      const displayRoundName =
+        existingSameRound.interviewRound?.name ||
+        (masterRound && (masterRound.id === existingSameRound.roundName || masterRound.name === existingSameRound.roundName)
+          ? masterRound.name
+          : existingSameRound.roundName);
+      throw new BadRequestException(
+        `Candidate is already scheduled for round "${displayRoundName}". Multiple interviews in the same round are not allowed.`,
+      );
+    }
+
     // Verify chronological interview order: subsequent rounds must be after previous rounds
-    const existingSchedules = await this.prisma.interviewSchedule.findMany({
+    const existingSchedules: any[] = await this.prisma.interviewSchedule.findMany({
       where: { candidateId: dto.candidateId },
       orderBy: { scheduledAt: 'desc' },
+      include: { interviewRound: true } as any,
     });
 
     if (existingSchedules.length > 0) {
       const latestSchedule = existingSchedules[0];
       if (scheduledDate <= new Date(latestSchedule.scheduledAt)) {
+        const latestRoundName =
+          latestSchedule.interviewRound?.name || latestSchedule.roundName;
         throw new BadRequestException(
-          `Subsequent interview round must be scheduled after previous round "${latestSchedule.roundName}" (${new Date(latestSchedule.scheduledAt).toLocaleString()}).`,
+          `Subsequent interview round must be scheduled after previous round "${latestRoundName}" (${new Date(latestSchedule.scheduledAt).toLocaleString()}).`,
         );
       }
     }
@@ -554,6 +727,36 @@ export class RecruitmentService {
   }
 
   async updateSchedule(id: string, data: Prisma.InterviewScheduleUpdateInput) {
+    const existing = await this.prisma.interviewSchedule.findUnique({
+      where: { id },
+      include: { interviewRound: true } as any,
+    });
+    if (!existing) {
+      throw new NotFoundException('Interview schedule not found.');
+    }
+
+    let masterRound: any = null;
+    if ((data as any).interviewRoundId) {
+      masterRound = await (this.prisma as any).interviewRound?.findUnique({
+        where: { id: (data as any).interviewRoundId },
+      });
+    }
+    if (!masterRound && data.roundName && typeof data.roundName === 'string') {
+      masterRound = await (this.prisma as any).interviewRound?.findFirst({
+        where: {
+          OR: [
+            { id: (data.roundName as string).trim() },
+            { name: { equals: (data.roundName as string).trim(), mode: 'insensitive' as Prisma.QueryMode } },
+          ],
+        },
+      });
+    }
+
+    if (masterRound) {
+      (data as any).interviewRoundId = masterRound.id;
+      data.roundName = masterRound.id; // Store Master ID in roundName
+    }
+
     if (data.roundName !== undefined) {
       const val =
         typeof data.roundName === 'string'
@@ -562,6 +765,40 @@ export class RecruitmentService {
       if (!val.trim() || val.trim() === '0' || /^0+$/.test(val.trim())) {
         throw new BadRequestException('Round name cannot be 0 or empty.');
       }
+
+      const candidateId =
+        typeof (data.candidate as any)?.connect?.id === 'string'
+          ? (data.candidate as any).connect.id
+          : existing.candidateId;
+
+      const existingSameRound: any = await this.prisma.interviewSchedule.findFirst({
+        where: {
+          candidateId,
+          id: { not: id },
+          OR: [
+            { roundName: { equals: val.trim(), mode: 'insensitive' as Prisma.QueryMode } },
+            ...(masterRound
+              ? [
+                  { interviewRoundId: masterRound.id },
+                  { roundName: { equals: masterRound.name.trim(), mode: 'insensitive' as Prisma.QueryMode } },
+                ]
+              : []),
+          ],
+          status: { not: 'CANCELLED' },
+        },
+        include: { interviewRound: true } as any,
+      });
+
+      if (existingSameRound) {
+        const displayRoundName =
+          existingSameRound.interviewRound?.name ||
+          (masterRound && (masterRound.id === existingSameRound.roundName || masterRound.name === existingSameRound.roundName)
+            ? masterRound.name
+            : existingSameRound.roundName);
+        throw new BadRequestException(
+          `Candidate is already scheduled for round "${displayRoundName}". Multiple interviews in the same round are not allowed.`,
+        );
+      }
     }
 
     if (data.scheduledAt !== undefined) {
@@ -569,13 +806,11 @@ export class RecruitmentService {
       if (isNaN(scheduledDate.getTime())) {
         throw new BadRequestException('Invalid scheduled interview date/time.');
       }
-      const existing = await this.prisma.interviewSchedule.findUnique({
-        where: { id },
-      });
       if (existing) {
         const otherSchedules = await this.prisma.interviewSchedule.findMany({
           where: { candidateId: existing.candidateId, id: { not: id } },
           orderBy: { attemptNumber: 'asc' },
+          include: { interviewRound: true },
         });
 
         const earlierSchedules = otherSchedules.filter(
@@ -584,8 +819,10 @@ export class RecruitmentService {
         if (earlierSchedules.length > 0) {
           const latestEarlier = earlierSchedules[earlierSchedules.length - 1];
           if (scheduledDate <= new Date(latestEarlier.scheduledAt)) {
+            const earlierRoundName =
+              latestEarlier.interviewRound?.name || latestEarlier.roundName;
             throw new BadRequestException(
-              `Interview round must be scheduled after previous round "${latestEarlier.roundName}" (${new Date(latestEarlier.scheduledAt).toLocaleString()}).`,
+              `Interview round must be scheduled after previous round "${earlierRoundName}" (${new Date(latestEarlier.scheduledAt).toLocaleString()}).`,
             );
           }
         }
@@ -596,8 +833,10 @@ export class RecruitmentService {
         if (laterSchedules.length > 0) {
           const earliestLater = laterSchedules[0];
           if (scheduledDate >= new Date(earliestLater.scheduledAt)) {
+            const laterRoundName =
+              earliestLater.interviewRound?.name || earliestLater.roundName;
             throw new BadRequestException(
-              `Interview round must be scheduled before subsequent round "${earliestLater.roundName}" (${new Date(earliestLater.scheduledAt).toLocaleString()}).`,
+              `Interview round must be scheduled before subsequent round "${laterRoundName}" (${new Date(earliestLater.scheduledAt).toLocaleString()}).`,
             );
           }
         }
@@ -866,7 +1105,6 @@ export class RecruitmentService {
             lastName,
             email: candEmail,
             phone: offer.candidate?.phone || null,
-            location: (offer as any)?.location || 'Vadodara Plant',
             departmentId: dept.id,
             designation: offer.role,
             dateOfJoining: joiningDate,
@@ -964,7 +1202,7 @@ export class RecruitmentService {
           ],
         },
       });
-    } catch (e) {}
+    } catch (e) { }
     if (lmCount > 0) {
       throw new ConflictException(
         `Financial Year "${fy.name}" is already in use by Department Leave Master and cannot be deleted.`,

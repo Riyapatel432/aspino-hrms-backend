@@ -18,8 +18,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionGuard } from '../../casl/guards/permission.guard';
+import { RequirePermission } from '../../casl/decorators/require-permission.decorator';
 
 import { IsBoolean } from 'class-validator';
 
@@ -38,12 +38,12 @@ export class UpdateSystemAccessDto {
 }
 
 @Controller('onboarding')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
   @Get('employees')
+  @RequirePermission('read', 'onboarding')
   async getEmployees(
     @Query()
     query: PaginationQueryDto & { status?: string; department?: string },
@@ -52,11 +52,13 @@ export class OnboardingController {
   }
 
   @Get('banks')
+  @RequirePermission('read', 'onboarding')
   async getBanks() {
     return this.onboardingService.getBanks();
   }
 
   @Patch('documents/:id/status')
+  @RequirePermission('update', 'onboarding')
   async updateDocumentStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -65,6 +67,7 @@ export class OnboardingController {
   }
 
   @Post('documents/:id/upload')
+  @RequirePermission('create', 'onboarding')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -91,6 +94,7 @@ export class OnboardingController {
   }
 
   @Post('inductions')
+  @RequirePermission('create', 'onboarding')
   async createInduction(
     @Body() body: { employeeId: string; scheduledAt: string; trainer: string },
   ) {
@@ -98,6 +102,7 @@ export class OnboardingController {
   }
 
   @Patch('inductions/:id/status')
+  @RequirePermission('update', 'onboarding')
   async updateInductionStatus(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -106,6 +111,7 @@ export class OnboardingController {
   }
 
   @Patch('employees/:id/probation')
+  @RequirePermission('update', 'onboarding')
   async updateProbation(
     @Param('id') id: string,
     @Body('status') status: string,
@@ -114,6 +120,7 @@ export class OnboardingController {
   }
 
   @Patch('employees/:id/system-access')
+  @RequirePermission('update', 'onboarding')
   async updateSystemAccess(
     @Param('id') employeeId: string,
     @Body() body: UpdateSystemAccessDto,
@@ -122,11 +129,13 @@ export class OnboardingController {
   }
 
   @Patch('employees/:id')
+  @RequirePermission('update', 'onboarding')
   async updateEmployee(@Param('id') id: string, @Body() body: any) {
     return this.onboardingService.updateEmployee(id, body);
   }
 
   @Delete('employees/:id')
+  @RequirePermission('delete', 'onboarding')
   async deleteEmployee(@Param('id') id: string) {
     return this.onboardingService.deleteEmployee(id);
   }

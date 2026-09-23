@@ -7,28 +7,61 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 export class UserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string) {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
-    console.log('--- DATABASE_URL in environment:', process.env.DATABASE_URL);
-    console.log('--- Querying email:', cleanEmail);
-    const result = await this.prisma.user.findUnique({
+    return this.prisma.user.findUnique({
       where: { email: cleanEmail },
+      include: {
+        employee: {
+          include: {
+            department: true,
+            bank: true,
+          },
+        },
+        roleRelation: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
     });
-    console.log('--- Query result:', result);
-    return result;
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
+      include: {
+        employee: {
+          include: {
+            department: true,
+            bank: true,
+          },
+        },
+        roleRelation: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
-  async create(data: Prisma.UserCreateInput): Promise<User> {
+  async create(data: any): Promise<User> {
     return this.prisma.user.create({
       data: {
         ...data,
         email: data.email.toLowerCase().trim(),
+      },
+      include: {
+        roleRelation: true,
       },
     });
   }
@@ -64,7 +97,10 @@ export class UserRepository {
       ];
     }
     if (query.role && query.role !== 'ALL') {
-      where.role = query.role;
+      where.OR = [
+        { role: query.role },
+        { roleRelation: { name: query.role } },
+      ];
     }
 
     const orderBy: any = {};
@@ -80,6 +116,15 @@ export class UserRepository {
         skip,
         take: limit,
         orderBy,
+        include: {
+          roleRelation: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+            },
+          },
+        },
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -87,13 +132,30 @@ export class UserRepository {
     return { data, total, page, limit };
   }
 
-  async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+  async update(id: string, data: any): Promise<User> {
     if (data.email && typeof data.email === 'string') {
       data.email = data.email.toLowerCase().trim();
     }
     return this.prisma.user.update({
       where: { id },
       data,
+      include: {
+        roleRelation: true,
+      },
+    });
+  }
+
+  async updateRole(id: string, roleId: string): Promise<User> {
+    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        roleId,
+        role: role ? role.name : 'USER',
+      },
+      include: {
+        roleRelation: true,
+      },
     });
   }
 

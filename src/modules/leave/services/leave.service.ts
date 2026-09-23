@@ -70,7 +70,23 @@ export class LeaveService {
 
   async getLeaveApplications(
     query: PaginationQueryDto & { employeeId?: string; status?: string } = {},
+    user?: any,
   ) {
+    if (user && (user.role?.toUpperCase() === 'EMPLOYEE' || user.role?.toUpperCase() === 'USER')) {
+      const emp = await this.prisma.employee.findFirst({
+        where: {
+          OR: [
+            { userId: user.id },
+            { id: user.employeeId || '' },
+            { email: { equals: user.email, mode: 'insensitive' } },
+            { firstName: { equals: user.name, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (emp) {
+        query.employeeId = emp.id;
+      }
+    }
     const res = await this.leaveRepository.findManyLeaveApplications(query);
     return createPaginatedResponse(res.data, res.total, res.page, res.limit);
   }

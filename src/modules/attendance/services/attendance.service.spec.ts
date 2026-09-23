@@ -109,8 +109,8 @@ describe('AttendanceService', () => {
   it('should capture attendance punch', async () => {
     const res = await service.captureAttendance({
       employeeId: 'EMP001',
-      punchType: 'CHECK_IN',
-      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
+      checkIn: new Date().toISOString(),
     });
     expect(attendanceRepo.captureAttendance).toHaveBeenCalled();
     expect(res.status).toBe('PRESENT');

@@ -3,11 +3,57 @@ model User {
   name         String
   email        String        @unique
   password     String
-  role         String        @default("USER") // ADMIN, HR, EMPLOYEE
+  role         String        @default("USER") // ADMIN, HR, EMPLOYEE (kept for backward compatibility)
+  roleId       String?
+  roleRelation Role?         @relation(fields: [roleId], references: [id], onDelete: SetNull)
   createdAt    DateTime      @default(now())
   employee     Employee?
   activityLogs ActivityLog[]
   interviewFeedbacks InterviewFeedback[]
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique // e.g. "SUPER_ADMIN", "HR_MANAGER", "SECURITY", "EMPLOYEE"
+  displayName String           // e.g. "Super Admin", "HR Manager", "Security Officer"
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  application String           // "GLOBAL", "HRMS", "GATEPASS"
+  module      String           // "employee", "attendance", "recruitment", "gatepass", "roles", etc.
+  action      String           // "read", "create", "update", "delete", "manage", "approve", "reject", "export", "import"
+  name        String           // Human readable e.g. "Create Employee"
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+
+  @@unique([application, module, action])
+  @@index([application, module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
 }
 
 model Employee {
@@ -32,7 +78,6 @@ model Employee {
   
   // QR Code & Public Profile Details
   phone            String?
-  location         String?
   qrToken          String               @unique @default(uuid())
 
   // Bank & Statutory Details
@@ -84,6 +129,17 @@ model TrainingType {
   isActive        Boolean          @default(true)
   createdAt       DateTime         @default(now())
   trainingRecords TrainingRecord[]
+}
+
+model InterviewRound {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String?
+  order       Int?                @default(1)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @default(now()) @updatedAt
+  schedules   InterviewSchedule[]
 }
 
 model JobRequisition {
@@ -165,16 +221,18 @@ model Candidate {
 }
 
 model InterviewSchedule {
-  id            String              @id @default(uuid())
-  candidateId   String
-  candidate     Candidate           @relation(fields: [candidateId], references: [id])
-  roundName     String              // e.g. Technical, HR, Manager
-  scheduledAt   DateTime
-  panelists     String[]              // Array or comma-separated panelist IDs
-  status        InterviewStatus     @default(SCHEDULED)
-  isReschedule  Boolean             @default(false)
-  attemptNumber Int                 @default(1)
-  feedbacks     InterviewFeedback[]
+  id                String              @id @default(uuid())
+  candidateId       String
+  candidate         Candidate           @relation(fields: [candidateId], references: [id])
+  interviewRoundId  String?
+  interviewRound    InterviewRound?     @relation(fields: [interviewRoundId], references: [id])
+  roundName         String              // e.g. Technical, HR, Manager
+  scheduledAt       DateTime
+  panelists         String[]            // Array or comma-separated panelist IDs
+  status            InterviewStatus     @default(SCHEDULED)
+  isReschedule      Boolean             @default(false)
+  attemptNumber     Int                 @default(1)
+  feedbacks         InterviewFeedback[]
 }
 
 model InterviewFeedback {
@@ -186,7 +244,7 @@ model InterviewFeedback {
   panelist       User?             @relation(fields: [panelistId], references: [id])
   rating         Int
   comments       String
-  recommendation Recommendation
+  recommendation String
   createdAt      DateTime          @default(now())
 }
 
@@ -298,6 +356,7 @@ model Attendance {
   isFullNightPresent  Boolean?              @default(false)
   isHolidayPresent    Boolean?              @default(false)
   captureMethod       String?               @default("BIOMETRIC")
+  breakMinutes        Int?                  @default(0)
   breakMisuseMinutes  Int?                  @default(0)
   breakDeductionHours Float?                @default(0.0)
   hasBreakComplaint   Boolean?              @default(false)
@@ -446,7 +505,7 @@ model FullAndFinalSettlement {
 }
 
 model PassCategory {
-  id          Int          @id @default(autoincrement())
+  id          String       @id @default(uuid())
   name        String
   code        String       @unique
   type        GatePassType
@@ -458,10 +517,10 @@ model PassCategory {
 }
 
 model GatePass {
-  id                    Int            @id @default(autoincrement())
+  id                    String         @id @default(uuid())
   passNumber            String         @unique
   type                  GatePassType
-  categoryId            Int
+  categoryId            String
   category              PassCategory   @relation(fields: [categoryId], references: [id])
   status                GatePassStatus @default(GATE_IN)
 
@@ -504,7 +563,7 @@ model Bank {
 }
 
 model Supplier {
-  id                 Int      @id @default(autoincrement())
+  id                 String   @id @default(uuid())
   code               String   @unique
   name               String
   address            String?
@@ -711,4 +770,151 @@ model FiscalYear {
   leaveMasters    DepartmentLeaveMaster[]
   taxDeclarations TaxDeclaration[]
   rentReceipts    HraRentReceipt[]
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── GATE PASS & ERP MASTERS (UNIFIED)
+// ══════════════════════════════════════════════════════════════
+
+model Vendor {
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  serviceType       String
+  address           String?
+  contactName       String?
+  mobile            String?
+  email             String?
+  contractReference String?
+  approvalStatus    String   @default("Approved")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  customerCode    String   @unique
+  name            String
+  billingAddress  String?
+  shippingAddress String?
+  gstNo           String?
+  creditTerms     String?  // e.g. "Net 30 Days", "Net 15 Days", "Immediate", "Advance", etc.
+  contactPerson   String?
+  email           String?
+  phone           String?
+  customerType    String   @default("DOMESTIC") // "DOMESTIC" | "EXPORT"
+  isDomestic      Boolean  @default(true)
+  country         String?  @default("India")
+  isActive        Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProductCategory {
+  id            String               @id @default(uuid())
+  categoryCode  String               @unique
+  categoryName  String
+  description   String?
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  subCategories ProductSubCategory[]
+  products      Product[]
+}
+
+model ProductSubCategory {
+  id              String          @id @default(uuid())
+  subCategoryCode String          @unique
+  subCategoryName String
+  categoryId      String
+  category        ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  description     String?
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  products        Product[]
+}
+
+model Product {
+  id                 String              @id @default(uuid())
+  productCode        String              @unique
+  name               String
+  categoryId         String
+  category           ProductCategory     @relation(fields: [categoryId], references: [id])
+  subCategoryId      String?
+  subCategory        ProductSubCategory? @relation(fields: [subCategoryId], references: [id])
+  uom                String              // e.g. TABLET, CAPSULE, VIAL, STRIP, BOTTLE, KG, LTR
+  shelfLife          String              // e.g. "24 Months", "36 Months"
+  storageCondition   String              // e.g. "Store below 25°C", "2-8°C (Cold Storage)"
+  standardCost       Float               @default(0.0)
+  hsnCode            String              // e.g. "30049099"
+  qcSpecification    String?             // Linked QC Specification / Standard description
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model Uom {
+  id               String   @id @default(uuid())
+  uomCode          String   @unique
+  uomName          String
+  conversionFactor Float?   @default(1.0)
+  description      String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PackingMaterial {
+  id                  String   @id @default(uuid())
+  materialCode        String   @unique // e.g. "PKG-ALU-01", "PKG-BTL-100ML"
+  type                String   @default("PRIMARY") // "PRIMARY", "SECONDARY", "TERTIARY"
+  description         String
+  approvedSuppliers   Json?    // Array of approved supplier names / IDs or objects
+  linkedSpecification String?  // Linked QC Specification Code or ID
+  uom                 String   // e.g. "ROLL", "NOS", "KG", "BOX", "MTR"
+  standardCost        Float    @default(0.0)
+  minimumStock        Float?   @default(0.0)
+  storageCondition    String?  @default("Ambient")
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model QcSpecification {
+  id                  String    @id @default(uuid())
+  specCode            String    @unique // e.g. "QC-SPEC-001", "SPEC-PCM-500"
+  productMaterialCode String    // Product or Material Code (e.g. "PRD-PCM-500", "PKG-ALU-01")
+  itemName            String    // Product or Material Name
+  itemType            String    @default("PRODUCT") // "PRODUCT", "PACKING_MATERIAL", "RAW_MATERIAL"
+  testParameters      Json      // Array of test parameter objects: [{ parameterName, testMethod, acceptableLimits, uom }]
+  testMethod          String?   // Overall standard or testing reference (e.g. "IP / BP / USP")
+  acceptableLimits    String?   // General acceptance criteria / summary
+  versionNo           String    @default("v1.0") // e.g. "v1.0", "Rev 02"
+  effectiveDate       DateTime  @default(now())
+  reviewDate          DateTime?
+  status              String    @default("ACTIVE") // "ACTIVE", "DRAFT", "SUPERSEDED", "OBSOLETE"
+  preparedBy          String?
+  approvedBy          String?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model StorageLocation {
+  id               String   @id @default(uuid())
+  locationCode     String   @unique // e.g. "LOC-RM-A101", "LOC-COLD-01", "LOC-FG-R02"
+  locationName     String   // e.g. "Raw Material Bay A-01", "Cold Room 1 (2-8°C)"
+  warehouse        String?  @default("Main Warehouse") // e.g. "Central Warehouse", "Warehouse A"
+  storageCondition String   @default("AMBIENT") // "AMBIENT", "COOL", "COLD_CHAIN", "FROZEN", "CONTROLLED_ROOM_TEMPERATURE"
+  capacity         String   // e.g. "500 Pallets", "1000 Boxes", "50 Drums"
+  linkedStoreType  String   @default("RAW_MATERIAL_STORE") // "RAW_MATERIAL_STORE", "PACKAGING_STORE", "FINISHED_GOODS_STORE", "QUARANTINE_STORE", "REJECTION_STORE", "IN_TRANSIT_STORE"
+  temperatureRange String?  // e.g. "2°C - 8°C", "15°C - 25°C", "Below -20°C"
+  humidityRange    String?  // e.g. "NMT 60% RH"
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

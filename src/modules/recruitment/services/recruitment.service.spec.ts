@@ -35,6 +35,13 @@ describe('RecruitmentService', () => {
       interviewSchedule: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      interviewRound: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
         count: jest.fn().mockResolvedValue(0),
       },
     };
@@ -110,19 +117,19 @@ describe('RecruitmentService', () => {
         source: 'Portal',
         requisitionId: 'req-1',
       });
+
       expect(res).toEqual({ id: 'cand-1', name: 'Alice' });
+      expect(repo.createCandidate).toHaveBeenCalled();
     });
   });
 
   describe('Interview Feedback Validation', () => {
     it('should throw BadRequestException when trying to submit feedback before interview time', async () => {
       const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days in future
-      prisma.interviewSchedule = {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'sched-1',
-          scheduledAt: futureDate,
-        }),
-      };
+      prisma.interviewSchedule.findUnique = jest.fn().mockResolvedValue({
+        id: 'sched-1',
+        scheduledAt: futureDate,
+      });
 
       await expect(
         service.createFeedback({
@@ -139,12 +146,10 @@ describe('RecruitmentService', () => {
 
     it('should successfully record feedback if interview time is in the past', async () => {
       const pastDate = new Date(Date.now() - 1000 * 60 * 60 * 2); // 2 hours ago
-      prisma.interviewSchedule = {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'sched-2',
-          scheduledAt: pastDate,
-        }),
-      };
+      prisma.interviewSchedule.findUnique = jest.fn().mockResolvedValue({
+        id: 'sched-2',
+        scheduledAt: pastDate,
+      });
       repo.createFeedback = jest.fn().mockResolvedValue({ id: 'fb-1', rating: 9 });
       repo.updateScheduleStatus = jest.fn().mockResolvedValue({ id: 'sched-2', status: 'COMPLETED' });
 
@@ -184,10 +189,28 @@ describe('RecruitmentService', () => {
       ).rejects.toThrow('Subsequent interview round must be scheduled after previous round');
     });
 
-    it('should successfully schedule a 2nd round when scheduled after the 1st round date', async () => {
+    it('should throw BadRequestException when candidate is already scheduled for the same round', async () => {
+      prisma.interviewSchedule.findFirst = jest.fn().mockResolvedValue({
+        id: 'sched-123',
+        roundName: 'Round: 123',
+        status: 'SCHEDULED',
+      });
+
+      await expect(
+        service.createSchedule({
+          candidateId: 'cand-patel',
+          roundName: 'Round: 123',
+          scheduledAt: new Date('2026-09-15T13:00:00.000Z').toISOString(),
+          panelists: ['Admin'],
+        }),
+      ).rejects.toThrow('Candidate is already scheduled for round "Round: 123". Multiple interviews in the same round are not allowed.');
+    });
+
+    it('should successfully schedule a 2nd round when scheduled after the 1st round date and round names differ', async () => {
       const round1Date = new Date('2026-09-10T16:00:00.000Z');
       const round2Date = new Date('2026-09-12T11:00:00.000Z'); // After round 1
 
+      prisma.interviewSchedule.findFirst = jest.fn().mockResolvedValue(null);
       prisma.interviewSchedule.findMany = jest.fn().mockResolvedValue([
         {
           id: 'sched-round-1',

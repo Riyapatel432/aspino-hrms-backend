@@ -29,8 +29,8 @@ describe('Concurrency & Race Condition Suite', () => {
       attendanceService
         .captureAttendance({
           employeeId: `EMP_CONCURRENCY_${i}`,
-          punchType: 'CHECK_IN',
-          timestamp: new Date().toISOString(),
+          date: new Date().toISOString().split('T')[0],
+          checkIn: new Date().toISOString(),
         })
         .catch((err) => ({ error: err.message })),
     );

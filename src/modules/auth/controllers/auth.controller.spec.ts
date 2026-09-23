@@ -47,7 +47,7 @@ describe('AuthController', () => {
   });
 
   it('should call authService.forgotPassword', async () => {
-    const dto = { email: 'admin@test.com' };
+    const dto = { email: 'admin@test.com', newPassword: 'newPassword123' };
     const res = await controller.forgotPassword(dto);
     expect(authService.forgotPassword).toHaveBeenCalledWith(dto);
     expect(res.message).toBe('Reset token sent');
@@ -61,9 +61,9 @@ describe('AuthController', () => {
     expect(res.message).toBe('Password changed successfully');
   });
 
-  it('should return profile for authenticated user', () => {
+  it('should return profile for authenticated user', async () => {
     const req = { user: { userId: 'user-123', role: 'admin' } };
-    const res = controller.getProfile(req);
+    const res = await controller.getProfile(req);
     expect(res.user.userId).toBe('user-123');
   });
 });

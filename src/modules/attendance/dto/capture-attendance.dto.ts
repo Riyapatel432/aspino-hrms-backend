@@ -11,6 +11,10 @@ import {
 import { Type } from 'class-transformer';
 
 export class CaptureAttendanceDto {
+  @IsString({ message: 'Attendance ID must be a string.' })
+  @IsOptional()
+  id?: string;
+
   @IsString({ message: 'Employee ID must be a string.' })
   @IsNotEmpty({ message: 'An employee must be selected.' })
   employeeId: string;
@@ -19,13 +23,16 @@ export class CaptureAttendanceDto {
   @IsNotEmpty({ message: 'Attendance date is required.' })
   date: string;
 
-  @IsString({ message: 'Check-in time must be a string.' })
   @IsOptional()
-  checkIn?: string;
+  checkIn?: string | null;
 
-  @IsString({ message: 'Check-out time must be a string.' })
   @IsOptional()
-  checkOut?: string;
+  checkOut?: string | null;
+
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Break minutes must be a number.' })
+  @IsOptional()
+  breakMinutes?: number;
 
   @IsString({ message: 'Status must be a string.' })
   @IsOptional()

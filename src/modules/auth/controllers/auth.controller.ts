@@ -45,12 +45,25 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('permissions')
+  async getPermissions(@Request() req: any) {
+    return this.authService.getUserPermissions(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req: any) {
+  async getProfile(@Request() req: any) {
+    const permissions = await this.authService.getUserPermissions(req.user.userId);
     return {
       message: 'Profile retrieved successfully',
-      user: req.user,
-      admin: req.user,
+      user: {
+        ...req.user,
+        ...permissions,
+      },
+      admin: {
+        ...req.user,
+        ...permissions,
+      },
     };
   }
 }

@@ -42,6 +42,10 @@ export class UsersService {
     return this.userRepository.update(id, data);
   }
 
+  async assignRole(userId: string, roleId: string): Promise<User> {
+    return this.userRepository.updateRole(userId, roleId);
+  }
+
   async deleteUser(id: string): Promise<User> {
     return this.userRepository.delete(id);
   }
