@@ -37,6 +37,7 @@ async function bootstrap() {
       process.env.FRONTEND_URL || 'https://admin-demo.yourdomain.com',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:3002',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],

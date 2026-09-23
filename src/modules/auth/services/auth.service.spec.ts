@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UserRepository } from '../../users/repositories/user.repository';
 import { JwtService } from '@nestjs/jwt';
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { UnauthorizedException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -11,6 +12,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let userRepository: any;
   let jwtService: any;
+  let caslAbilityFactory: any;
 
   const mockUser = {
     id: 'user-123',
@@ -32,11 +34,25 @@ describe('AuthService', () => {
       signAsync: jest.fn().mockResolvedValue('jwt_token_xyz'),
     };
 
+    caslAbilityFactory = {
+      getUserPermissionsPayload: jest.fn().mockResolvedValue({
+        user: {
+          id: 'user-123',
+          name: 'Admin User',
+          email: 'admin@aspino.com',
+          role: 'admin',
+        },
+        permissions: [],
+        rules: [],
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UserRepository, useValue: userRepository },
         { provide: JwtService, useValue: jwtService },
+        { provide: CaslAbilityFactory, useValue: caslAbilityFactory },
       ],
     }).compile();
 

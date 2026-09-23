@@ -1,3 +1,4 @@
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExitController } from './exit.controller';
 import { ExitService } from '../services/exit.service';
@@ -14,7 +15,7 @@ describe('ExitController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ExitController],
-      providers: [{ provide: ExitService, useValue: service }],
+      providers: [{ provide: ExitService, useValue: service }, { provide: CaslAbilityFactory, useValue: { createForUser: jest.fn(), getUserPermissionsPayload: jest.fn() } }],
     }).compile();
 
     controller = module.get<ExitController>(ExitController);

@@ -1,3 +1,4 @@
+import { CaslAbilityFactory } from '../../casl/casl-ability.factory';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LeaveController } from './leave.controller';
 import { LeaveService } from '../services/leave.service';
@@ -23,7 +24,7 @@ describe('LeaveController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LeaveController],
-      providers: [{ provide: LeaveService, useValue: service }],
+      providers: [{ provide: LeaveService, useValue: service }, { provide: CaslAbilityFactory, useValue: { createForUser: jest.fn(), getUserPermissionsPayload: jest.fn() } }],
     }).compile();
 
     controller = module.get<LeaveController>(LeaveController);
