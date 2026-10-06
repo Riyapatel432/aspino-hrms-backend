@@ -519,6 +519,8 @@ export class RecruitmentRepository {
         { name: { contains: query.search, mode: 'insensitive' } },
         { email: { contains: query.search, mode: 'insensitive' } },
         { phone: { contains: query.search, mode: 'insensitive' } },
+        { aadharNumber: { contains: query.search, mode: 'insensitive' } },
+        { panNumber: { contains: query.search, mode: 'insensitive' } },
         { source: { contains: query.search, mode: 'insensitive' } },
         {
           requisition: {
@@ -594,6 +596,10 @@ export class RecruitmentRepository {
         name: dto.name,
         email: dto.email ? dto.email.toLowerCase().trim() : '',
         phone: dto.phone,
+        aadharNumber: dto.aadharNumber ? dto.aadharNumber.replace(/\D/g, '') : null,
+        panNumber: dto.panNumber ? dto.panNumber.toUpperCase().trim() : null,
+        dob: dto.dob ? new Date(dto.dob) : null,
+        address: dto.address || null,
         resumeUrl: dto.resumeUrl || '',
         source: dto.source,
         requisitionId: dto.requisitionId,
@@ -1154,6 +1160,18 @@ export class RecruitmentRepository {
       data.experienceYears !== null
     ) {
       data.experienceYears = Number(data.experienceYears) || 0.0;
+    }
+    if (data && data.dob !== undefined) {
+      data.dob = data.dob ? new Date(data.dob) : null;
+    }
+    if (data && data.address !== undefined) {
+      data.address = data.address || null;
+    }
+    if (data && data.aadharNumber !== undefined) {
+      data.aadharNumber = data.aadharNumber ? data.aadharNumber.replace(/\D/g, '') : null;
+    }
+    if (data && data.panNumber !== undefined) {
+      data.panNumber = data.panNumber ? data.panNumber.toUpperCase().trim() : null;
     }
     const cand = await this.prisma.candidate.update({
       where: { id },

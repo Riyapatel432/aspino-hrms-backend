@@ -760,9 +760,9 @@ export class PayrollRepository {
       this.prisma.bank.findMany({ where: { isActive: true } }),
     ]);
     const empMap = new Map<string, string>();
-    const normalize = (str: string) =>
+    const normalize = (str?: string | null) =>
       (str || '').toLowerCase().replace(/[^a-z0-9]/gi, '');
-    const normalizeStripZeros = (str: string) =>
+    const normalizeStripZeros = (str?: string | null) =>
       (str || '')
         .toLowerCase()
         .replace(/[^a-z0-9]/gi, '')

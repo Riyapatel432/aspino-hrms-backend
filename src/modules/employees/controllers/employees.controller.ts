@@ -243,7 +243,7 @@ export class EmployeesController {
         .stroke();
     };
 
-    drawField('EMPLOYEE ID', employee.employeeId, 187);
+    drawField('EMPLOYEE ID', employee.employeeId || '—', 187);
     drawField(
       'DEPARTMENT',
       (employee.department?.name || '').toUpperCase(),

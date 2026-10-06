@@ -1063,27 +1063,16 @@ export class RecruitmentService {
           data: { status: 'ACCEPTED' },
         });
 
-        // 3. Generate employee ID in aspino_YYYY_NNN format
-        const joiningDate = offer.joiningDate ?? new Date();
-        const year = new Date(joiningDate).getFullYear();
-        const yearPrefix = `aspino_${year}_`;
-
-        const existingCount = await tx.employee.count({
-          where: {
-            employeeId: { startsWith: yearPrefix, mode: 'insensitive' },
-          },
-        });
-        const empId = `${yearPrefix}${String(existingCount + 1).padStart(3, '0')}`;
-
-        // 4. Parse candidate name into firstName / lastName
+        // 3. Parse candidate name into firstName / lastName
         const [firstName, ...lastNameParts] = offer.candidate.name.split(' ');
         const lastName = lastNameParts.join(' ') || 'Candidate';
 
-        // 5. Compute probation end date
+        // 4. Compute probation end date
+        const joiningDate = offer.joiningDate ?? new Date();
         const probationEnd = new Date(joiningDate);
         probationEnd.setMonth(probationEnd.getMonth() + PROBATION_MONTHS);
 
-        // 6. Create employee record
+        // 5. Create employee record (employeeId is left null so HR assigns it manually)
         let dept = await tx.department.findFirst({
           where: {
             name: { equals: DEFAULT_EMPLOYEE_DEPARTMENT, mode: 'insensitive' },
@@ -1100,11 +1089,16 @@ export class RecruitmentService {
 
         const employee = await tx.employee.create({
           data: {
-            employeeId: empId,
+            employeeId: null,
             firstName,
             lastName,
             email: candEmail,
             phone: offer.candidate?.phone || null,
+            dob: offer.candidate?.dob || null,
+            address: offer.candidate?.address || null,
+            aadharNumber: (offer.candidate as any)?.aadharNumber || null,
+            panNumber: (offer.candidate as any)?.panNumber || null,
+            resumeUrl: (offer.candidate as any)?.resumeUrl || null,
             departmentId: dept.id,
             designation: offer.role,
             dateOfJoining: joiningDate,
@@ -1116,7 +1110,7 @@ export class RecruitmentService {
           },
         });
 
-        // 7. Provision onboarding document checklist
+        // 6. Provision onboarding document checklist
         await tx.onboardingDocument.createMany({
           data: ONBOARDING_DOCUMENT_TYPES.map((documentType) => ({
             employeeId: employee.id,
@@ -1129,7 +1123,7 @@ export class RecruitmentService {
       });
 
       this.logger.log(
-        `Offer accepted: offerId=${offerId}, empId=${result.employee.employeeId} (id=${result.employee.id})`,
+        `Offer accepted: offerId=${offerId}, employee created (id=${result.employee.id}) with manual employeeId pending.`,
       );
 
       return result;

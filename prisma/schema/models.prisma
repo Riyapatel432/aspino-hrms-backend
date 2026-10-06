@@ -58,7 +58,7 @@ model RolePermission {
 
 model Employee {
   id               String               @id @default(uuid())
-  employeeId       String               @unique // e.g. ASP-2026-0001
+  employeeId       String?              @unique // e.g. ASP-2026-0001
   userId           String?              @unique
   user             User?                @relation(fields: [userId], references: [id])
   firstName        String
@@ -76,9 +76,12 @@ model Employee {
   totalExperienceYears Float?           @default(0.0)
   status           EmployeeStatus       @default(ACTIVE)
   
-  // QR Code & Public Profile Details
+  // Personal & Contact Details
+  dob              DateTime?
+  address          String?
   phone            String?
   qrToken          String               @unique @default(uuid())
+  resumeUrl        String?
 
   // Bank & Statutory Details
   bankId           Int?
@@ -87,6 +90,7 @@ model Employee {
   accountNumber    String?
   ifscCode         String?
   panNumber        String?
+  aadharNumber     String?
 
   createdAt        DateTime             @default(now())
   documents        OnboardingDocument[]
@@ -204,6 +208,10 @@ model Candidate {
   name            String
   email           String              @unique
   phone           String?
+  aadharNumber    String?
+  panNumber       String?
+  dob             DateTime?
+  address         String?
   resumeUrl       String?
   source          String              // Referral, Portal, Agency, LinkedIn, Walk-in, Website
   experienceYears Float?              @default(0.0)

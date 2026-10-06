@@ -11,13 +11,17 @@ async function run() {
     await pool.query(`
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "qrToken" TEXT DEFAULT gen_random_uuid()::text;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "phone" TEXT;
+      ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "resumeUrl" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "location" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankId" INTEGER;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "accountNumber" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "ifscCode" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "panNumber" TEXT;
+      ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "aadharNumber" TEXT;
       ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "probationEnd" TIMESTAMP(3);
+      ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "aadharNumber" TEXT;
+      ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "panNumber" TEXT;
     `);
 
     // Ensure at least one Department exists

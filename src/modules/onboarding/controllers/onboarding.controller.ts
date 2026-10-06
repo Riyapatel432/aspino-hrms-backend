@@ -51,6 +51,76 @@ export class OnboardingController {
     return this.onboardingService.getEmployees(query);
   }
 
+  @Get('employees/next-id')
+  @RequirePermission('read', 'onboarding')
+  async getNextEmployeeId() {
+    return this.onboardingService.getNextEmployeeId();
+  }
+
+  @Get('employees/stats')
+  @RequirePermission('read', 'onboarding')
+  async getEmployeeStats() {
+    return this.onboardingService.getEmployeeStats();
+  }
+
+  @Get('employees/:id')
+  @RequirePermission('read', 'onboarding')
+  async getEmployeeById(@Param('id') id: string) {
+    return this.onboardingService.getEmployeeById(id);
+  }
+
+  @Post('employees')
+  @RequirePermission('create', 'onboarding')
+  async createEmployee(@Body() body: any) {
+    return this.onboardingService.createEmployee(body);
+  }
+
+  @Post('employees/upload-photo')
+  @RequirePermission('create', 'onboarding')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/onboarding',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `emp-photo-${uniqueSuffix}${ext}`);
+        },
+      }),
+    }),
+  )
+  async uploadEmployeePhoto(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No photo uploaded');
+    }
+    const fileUrl = `/uploads/onboarding/${file.filename}`;
+    return { fileUrl };
+  }
+
+  @Post('employees/upload-resume')
+  @RequirePermission('create', 'onboarding')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/resumes',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `emp-resume-${uniqueSuffix}${ext}`);
+        },
+      }),
+    }),
+  )
+  async uploadEmployeeResume(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No resume uploaded');
+    }
+    const fileUrl = `/uploads/resumes/${file.filename}`;
+    return { fileUrl, originalName: file.originalname };
+  }
+
   @Get('banks')
   @RequirePermission('read', 'onboarding')
   async getBanks() {
