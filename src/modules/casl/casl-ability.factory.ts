@@ -92,12 +92,8 @@ export class CaslAbilityFactory {
       (rp) => rp.permission,
     );
 
-    // 1. Check for universal super admin permission or role
-    const isSuperAdmin =
-      user.roleRelation.name === 'SUPER_ADMIN' ||
-      assignedPermissions.some(
-        (p) => p.module === 'all' && p.action === 'manage',
-      );
+    // 1. Check for universal super admin role
+    const isSuperAdmin = user.roleRelation.name === 'SUPER_ADMIN';
 
     if (isSuperAdmin) {
       can('manage', 'all');
@@ -205,13 +201,21 @@ export class CaslAbilityFactory {
       if (subject === ('leave_master' as any)) {
         can(action, 'leave_master' as any);
       }
-      if (subject === ('onboarding' as any) || subject === ('employees' as any) || subject === ('employee' as any)) {
-        can(action, 'onboarding' as any);
+      if (subject === ('employees' as any) || subject === ('employee' as any)) {
         can(action, 'employee' as any);
         can(action, 'employees' as any);
         can(action, 'employee_entry' as any);
         can(action, 'employee-entry' as any);
         can(action, 'employees-entry' as any);
+      }
+      if (subject === ('roles' as any) || subject === ('role' as any) || subject === ('permissions' as any) || subject === ('permission' as any)) {
+        can(action, 'roles' as any);
+        can(action, 'role' as any);
+        can(action, 'permissions' as any);
+        can(action, 'permission' as any);
+      }
+      if (subject === ('onboarding' as any)) {
+        can(action, 'onboarding' as any);
       }
       if (subject === ('resignation_clearance' as any)) {
         can(action, 'resignation_clearance' as any);
@@ -271,9 +275,7 @@ export class CaslAbilityFactory {
       description: rp.permission.description,
     }));
 
-    const isSuperAdmin =
-      user.roleRelation.name === 'SUPER_ADMIN' ||
-      permissions.some((p) => p.module === 'all' && p.action === 'manage');
+    const isSuperAdmin = user.roleRelation.name === 'SUPER_ADMIN';
 
     const baselineRules = [
       { action: 'read', subject: 'attendance' },
