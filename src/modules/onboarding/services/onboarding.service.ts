@@ -70,10 +70,57 @@ export class OnboardingService {
     return this.onboardingRepository.updateDocumentFileUrl(id, fileUrl, status);
   }
 
-  async updateEmployee(id: string, data: Prisma.EmployeeUpdateInput) {
+  async getEmployeeById(id: string) {
+    return this.onboardingRepository.findEmployeeById(id);
+  }
+
+  async getNextEmployeeId() {
+    const nextId = await this.onboardingRepository.getNextEmployeeId();
+    return { nextId };
+  }
+
+  async getEmployeeStats() {
+    return this.onboardingRepository.getEmployeeStats();
+  }
+
+  async createEmployee(data: any) {
+    if (data.email) {
+      const existing = await this.prisma.employee.findUnique({
+        where: { email: data.email.trim().toLowerCase() },
+      });
+      if (existing) {
+        throw new ConflictException(
+          `Employee with email "${data.email}" already exists.`,
+        );
+      }
+    }
+
+    if (data.employeeId) {
+      const empIdStr =
+        typeof data.employeeId === 'string'
+          ? data.employeeId.trim()
+          : (data.employeeId?.set || '').trim();
+      if (empIdStr) {
+        const existing = await this.prisma.employee.findFirst({
+          where: {
+            employeeId: { equals: empIdStr, mode: 'insensitive' },
+          },
+        });
+        if (existing) {
+          throw new ConflictException(
+            `Employee with ID "${empIdStr}" already exists (assigned to ${existing.firstName} ${existing.lastName}).`,
+          );
+        }
+      }
+    }
+
+    return this.onboardingRepository.createEmployee(data);
+  }
+
+  async updateEmployee(id: string, data: any) {
     if (data.email) {
       const emailStr =
-        typeof data.email === 'string' ? data.email : data.email.set;
+        typeof data.email === 'string' ? data.email.trim().toLowerCase() : (data.email?.set || '').trim().toLowerCase();
       if (emailStr) {
         const existing = await this.prisma.employee.findFirst({
           where: {
@@ -91,18 +138,18 @@ export class OnboardingService {
     if (data.employeeId) {
       const empIdStr =
         typeof data.employeeId === 'string'
-          ? data.employeeId
-          : data.employeeId.set;
+          ? data.employeeId.trim()
+          : (data.employeeId?.set || '').trim();
       if (empIdStr) {
         const existing = await this.prisma.employee.findFirst({
           where: {
-            employeeId: empIdStr,
+            employeeId: { equals: empIdStr, mode: 'insensitive' },
             id: { not: id },
           },
         });
         if (existing) {
           throw new ConflictException(
-            'Employee with this employee ID already exists.',
+            `Employee with ID "${empIdStr}" already exists (assigned to ${existing.firstName} ${existing.lastName}).`,
           );
         }
       }

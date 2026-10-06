@@ -173,12 +173,18 @@ export class PrismaService
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "departmentId" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "qrToken" TEXT DEFAULT gen_random_uuid()::text;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "phone" TEXT;
+          ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "resumeUrl" TEXT;
+          ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "dob" TIMESTAMP(3);
+          ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "address" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankId" INTEGER;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "accountNumber" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "ifscCode" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "panNumber" TEXT;
+          ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "aadharNumber" TEXT;
           ALTER TABLE IF EXISTS "Employee" ADD COLUMN IF NOT EXISTS "probationEnd" TIMESTAMP(3);
+          ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "aadharNumber" TEXT;
+          ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "panNumber" TEXT;
         `);
         try {
           await this.$executeRawUnsafe(
@@ -212,6 +218,8 @@ export class PrismaService
           );
         } catch (e) {}
         await this.$executeRawUnsafe(`
+          ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "dob" TIMESTAMP(3);
+          ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "address" TEXT;
           ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "isReInterview" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "rejectionCount" INTEGER DEFAULT 0;
           ALTER TABLE IF EXISTS "Candidate" ADD COLUMN IF NOT EXISTS "rejectedAt" TIMESTAMP(3);
@@ -240,6 +248,35 @@ export class PrismaService
             END $$;
           `);
         } catch (e) {}
+        // Ensure Bank table id type is integer
+        try {
+          const bankIdCol = await this.$queryRawUnsafe<any[]>(`
+            SELECT data_type FROM information_schema.columns WHERE table_name = 'Bank' AND column_name = 'id';
+          `);
+          if (bankIdCol && bankIdCol.length > 0 && bankIdCol[0].data_type !== 'integer') {
+            await this.$executeRawUnsafe(`
+              DROP TABLE IF EXISTS "Bank" CASCADE;
+              CREATE TABLE "Bank" (
+                "id" SERIAL PRIMARY KEY,
+                "name" TEXT UNIQUE NOT NULL,
+                "isActive" BOOLEAN NOT NULL DEFAULT true,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+              );
+              INSERT INTO "Bank" (name, "isActive") VALUES 
+                ('State Bank of India (SBI)', true),
+                ('HDFC Bank', true),
+                ('ICICI Bank', true),
+                ('Axis Bank', true),
+                ('Punjab National Bank (PNB)', true),
+                ('Bank of Baroda', true),
+                ('Kotak Mahindra Bank', true),
+                ('Canara Bank', true)
+              ON CONFLICT (name) DO NOTHING;
+            `);
+          }
+        } catch (e) {}
+
         await this.$executeRawUnsafe(`
           ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "isCnvApplicable" BOOLEAN DEFAULT false;
           ALTER TABLE IF EXISTS "JobRequisition" ADD COLUMN IF NOT EXISTS "cnvNotificationDate" TIMESTAMP(3);

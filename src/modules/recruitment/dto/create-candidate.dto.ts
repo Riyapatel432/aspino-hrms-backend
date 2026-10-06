@@ -51,5 +51,20 @@ export class CreateCandidateDto {
   requisitionId: string;
 
   @IsOptional()
+  dob?: string | Date;
+
+  @IsOptional()
+  @IsString({ message: 'Address must be a string.' })
+  address?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Aadhaar Card Number must be a string.' })
+  aadharNumber?: string;
+
+  @IsOptional()
+  @IsString({ message: 'PAN Card Number must be a string.' })
+  panNumber?: string;
+
+  @IsOptional()
   experienceYears?: number;
 }

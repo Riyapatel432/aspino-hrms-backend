@@ -205,9 +205,13 @@ export class CaslAbilityFactory {
       if (subject === ('leave_master' as any)) {
         can(action, 'leave_master' as any);
       }
-      if (subject === ('onboarding' as any)) {
+      if (subject === ('onboarding' as any) || subject === ('employees' as any) || subject === ('employee' as any)) {
         can(action, 'onboarding' as any);
         can(action, 'employee' as any);
+        can(action, 'employees' as any);
+        can(action, 'employee_entry' as any);
+        can(action, 'employee-entry' as any);
+        can(action, 'employees-entry' as any);
       }
       if (subject === ('resignation_clearance' as any)) {
         can(action, 'resignation_clearance' as any);
@@ -315,6 +319,7 @@ export class CaslAbilityFactory {
               bankName: emp.bank?.name || emp.bankName,
               accountNumber: emp.accountNumber,
               panNumber: emp.panNumber,
+              aadharNumber: emp.aadharNumber,
               status: emp.status,
             }
           : null,
