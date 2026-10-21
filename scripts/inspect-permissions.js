@@ -1,21 +1,16 @@
 const { Pool } = require('pg');
-require('dotenv').config({ path: 'd:/Aspino-Hrms/nestjs-aspino-hrms/.env' });
+const pool = new Pool({ connectionString: 'postgresql://postgres:admin123@localhost:5432/aspino_erp' });
 
-async function check() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  
-  const rolePerms = await pool.query(`
-    SELECT r.name as role_name, p.name as perm_name, p.module, p.action, p.application
-    FROM role_permissions rp
-    JOIN permissions p ON rp."permissionId" = p.id
-    JOIN roles r ON rp."roleId" = r.id
-    WHERE r.name = 'TEST_COORDINATOR'
-    ORDER BY p.module, p.action
+async function main() {
+  const res = await pool.query(`
+    SELECT id, name, action, module 
+    FROM permissions 
+    WHERE module ILIKE ANY(ARRAY['%quotation%', '%purchase%', '%invoice%', '%credit%', '%debit%', '%challan%', '%gatepass%', '%gate_pass%', '%audit%'])
+       OR name ILIKE ANY(ARRAY['%quotation%', '%purchase%', '%invoice%', '%credit%', '%debit%', '%challan%', '%gatepass%', '%gate-pass%'])
+    ORDER BY module, name;
   `);
-  console.log('TEST_COORDINATOR permissions count:', rolePerms.rows.length);
-  console.log('TEST_COORDINATOR permissions:', rolePerms.rows);
-
-  await pool.end();
+  console.log('Total matching permissions:', res.rows.length);
+  console.log(JSON.stringify(res.rows, null, 2));
 }
 
-check();
+main().catch(console.error).finally(() => pool.end());

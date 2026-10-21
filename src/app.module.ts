@@ -32,6 +32,13 @@ import { UomModule } from './modules/uom/uom.module';
 import { PackingMaterialModule } from './modules/packing-material/packing-material.module';
 import { QcSpecificationModule } from './modules/qc-specification/qc-specification.module';
 import { StorageLocationModule } from './modules/storage-location/storage-location.module';
+import { QuotationModule } from './modules/quotation/quotation.module';
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
+import { InvoiceModule } from './modules/invoice/invoice.module';
+import { CreditDebitNoteModule } from './modules/credit-debit-note/credit-debit-note.module';
+import { DeliveryChallanModule } from './modules/delivery-challan/delivery-challan.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { LogisticsModule } from './modules/logistics/logistics.module';
 
 @Module({
   imports: [
@@ -63,6 +70,14 @@ import { StorageLocationModule } from './modules/storage-location/storage-locati
     PackingMaterialModule,
     QcSpecificationModule,
     StorageLocationModule,
+    QuotationModule,
+    PurchaseOrderModule,
+    InvoiceModule,
+    CreditDebitNoteModule,
+    DeliveryChallanModule,
+    MaintenanceModule,
+    LogisticsModule,
+
     RouterModule.register([
       {
         path: 'staff-hrms',

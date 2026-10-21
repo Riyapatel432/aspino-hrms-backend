@@ -7,8 +7,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { CaslAbilityFactory } from '../casl-ability.factory';
-import { PERMISSIONS_KEY } from '../decorators/require-permission.decorator';
-import { RequiredPermission } from '../types/casl.types';
+import {
+  PERMISSIONS_KEY,
+  RequiredPermission,
+} from '../decorators/require-permission.decorator';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -18,14 +20,14 @@ export class PermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermission =
-      this.reflector.getAllAndOverride<RequiredPermission>(PERMISSIONS_KEY, [
+    const requiredPermissions =
+      this.reflector.getAllAndOverride<RequiredPermission[]>(PERMISSIONS_KEY, [
         context.getHandler(),
         context.getClass(),
       ]);
 
-    // If no permission decorator is specified, allow through
-    if (!requiredPermission) {
+    // No @RequirePermissions decorator → allow through
+    if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
 
@@ -38,15 +40,14 @@ export class PermissionGuard implements CanActivate {
 
     const ability = await this.abilityFactory.createForUser(user.userId);
 
-    const isAllowed = ability.can(
-      requiredPermission.action,
-      requiredPermission.subject,
-    );
-
-    if (!isAllowed) {
-      throw new ForbiddenException(
-        `Access denied: You lack '${requiredPermission.action}' permission on '${requiredPermission.subject}'`,
-      );
+    // ALL listed permissions must be satisfied
+    for (const perm of requiredPermissions) {
+      const allowed = ability.can(perm.action as any, perm.subject as any);
+      if (!allowed) {
+        throw new ForbiddenException(
+          `Access denied: missing permission "${perm.key}"`,
+        );
+      }
     }
 
     return true;

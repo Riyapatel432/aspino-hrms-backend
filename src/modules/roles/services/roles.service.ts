@@ -17,15 +17,10 @@ export class RolesService {
     const roles = await this.prisma.role.findMany({
       include: {
         permissions: {
-          include: {
-            permission: true,
-          },
+          include: { permission: true },
         },
         _count: {
-          select: {
-            users: true,
-            permissions: true,
-          },
+          select: { users: true, permissions: true },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -54,16 +49,10 @@ export class RolesService {
       where: { id },
       include: {
         permissions: {
-          include: {
-            permission: true,
-          },
+          include: { permission: true },
         },
         users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+          select: { id: true, name: true, email: true },
         },
       },
     });
@@ -87,30 +76,24 @@ export class RolesService {
   }
 
   async create(createRoleDto: CreateRoleDto) {
-    const existing = await this.prisma.role.findUnique({
-      where: { name: createRoleDto.name.toUpperCase().trim() },
-    });
+    const name = createRoleDto.name.toUpperCase().trim();
 
+    const existing = await this.prisma.role.findUnique({ where: { name } });
     if (existing) {
-      throw new ConflictException(
-        `Role with name '${createRoleDto.name}' already exists`,
-      );
+      throw new ConflictException(`Role '${createRoleDto.name}' already exists`);
     }
 
     const role = await this.prisma.$transaction(async (tx) => {
       const newRole = await tx.role.create({
         data: {
-          name: createRoleDto.name.toUpperCase().trim(),
+          name,
           displayName: (createRoleDto.displayName || createRoleDto.name).trim(),
-          description: createRoleDto.description,
+          description: createRoleDto.description ?? null,
           isSystem: false,
         },
       });
 
-      if (
-        createRoleDto.permissionIds &&
-        createRoleDto.permissionIds.length > 0
-      ) {
+      if (createRoleDto.permissionIds?.length) {
         await tx.rolePermission.createMany({
           data: createRoleDto.permissionIds.map((pId) => ({
             roleId: newRole.id,
@@ -131,11 +114,25 @@ export class RolesService {
       throw new NotFoundException(`Role with ID '${id}' not found`);
     }
 
+    const newName = updateRoleDto.name
+      ? updateRoleDto.name.toUpperCase().trim()
+      : undefined;
+
+    // Check uniqueness if name is changing
+    if (newName && newName !== role.name) {
+      const conflict = await this.prisma.role.findUnique({ where: { name: newName } });
+      if (conflict) {
+        throw new ConflictException(`Role name '${newName}' already exists`);
+      }
+    }
+
     await this.prisma.role.update({
       where: { id },
       data: {
-        ...(updateRoleDto.name ? { name: updateRoleDto.name.toUpperCase().trim() } : {}),
-        displayName: updateRoleDto.displayName?.trim() ?? (updateRoleDto.name ? updateRoleDto.name.trim() : role.displayName),
+        ...(newName ? { name: newName } : {}),
+        displayName:
+          updateRoleDto.displayName?.trim() ??
+          (updateRoleDto.name ? updateRoleDto.name.trim() : role.displayName),
         description: updateRoleDto.description ?? role.description,
       },
     });
@@ -146,11 +143,7 @@ export class RolesService {
   async delete(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: { users: true },
-        },
-      },
+      include: { _count: { select: { users: true } } },
     });
 
     if (!role) {
@@ -158,48 +151,38 @@ export class RolesService {
     }
 
     if (role.isSystem) {
-      throw new BadRequestException('System default roles cannot be deleted');
+      throw new BadRequestException('System roles cannot be deleted');
     }
 
     if (role._count.users > 0) {
       throw new BadRequestException(
-        `Cannot delete role because it is assigned to ${role._count.users} user(s). Reassign them first.`,
+        `Cannot delete role: it is assigned to ${role._count.users} user(s). Reassign them first.`,
       );
     }
 
-    await this.prisma.role.delete({
-      where: { id },
-    });
+    // Delete role-permission mappings first, then the role
+    await this.prisma.$transaction([
+      this.prisma.rolePermission.deleteMany({ where: { roleId: id } }),
+      this.prisma.role.delete({ where: { id } }),
+    ]);
 
-    return {
-      message: `Role '${role.displayName}' deleted successfully`,
-    };
+    return { message: `Role '${role.displayName}' deleted successfully` };
   }
 
-  async assignPermissions(
-    id: string,
-    assignPermissionsDto: AssignPermissionsDto,
-  ) {
+  async assignPermissions(id: string, assignPermissionsDto: AssignPermissionsDto) {
     const role = await this.prisma.role.findUnique({ where: { id } });
     if (!role) {
       throw new NotFoundException(`Role with ID '${id}' not found`);
     }
 
-    // Atomic transaction to replace permissions
     await this.prisma.$transaction(async (tx) => {
-      await tx.rolePermission.deleteMany({
-        where: { roleId: id },
-      });
+      // Remove all existing permissions for this role
+      await tx.rolePermission.deleteMany({ where: { roleId: id } });
 
-      if (
-        assignPermissionsDto.permissionIds &&
-        assignPermissionsDto.permissionIds.length > 0
-      ) {
-        // Verify permissions exist
+      if (assignPermissionsDto.permissionIds?.length) {
+        // Verify each permission exists before assigning
         const validPerms = await tx.permission.findMany({
-          where: {
-            id: { in: assignPermissionsDto.permissionIds },
-          },
+          where: { id: { in: assignPermissionsDto.permissionIds } },
           select: { id: true },
         });
 
@@ -213,5 +196,46 @@ export class RolesService {
     });
 
     return this.findOne(id);
+  }
+
+  /**
+   * Duplicate an existing role with all its permissions.
+   * New role name = "<original> (Copy)".
+   */
+  async duplicate(id: string) {
+    const source = await this.findOne(id);
+
+    const baseName = `${source.name}_COPY`;
+    let candidateName = baseName;
+    let suffix = 1;
+
+    // Find a unique name
+    while (await this.prisma.role.findUnique({ where: { name: candidateName } })) {
+      candidateName = `${baseName}_${suffix++}`;
+    }
+
+    const newRole = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.role.create({
+        data: {
+          name: candidateName,
+          displayName: `${source.displayName || source.name} (Copy)`,
+          description: source.description,
+          isSystem: false,
+        },
+      });
+
+      if (source.permissionIds?.length) {
+        await tx.rolePermission.createMany({
+          data: source.permissionIds.map((pId) => ({
+            roleId: created.id,
+            permissionId: pId,
+          })),
+        });
+      }
+
+      return created;
+    });
+
+    return this.findOne(newRole.id);
   }
 }

@@ -15,7 +15,7 @@ import { UpdateRoleDto } from '../dto/update-role.dto';
 import { AssignPermissionsDto } from '../dto/assign-permissions.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../../casl/guards/permission.guard';
-import { RequirePermission } from '../../casl/decorators/require-permission.decorator';
+import { RequirePermissions } from '../../casl/decorators/require-permission.decorator';
 
 @Controller('roles')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -23,41 +23,47 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @RequirePermission('read', 'roles')
+  @RequirePermissions('roles:read')
   findAll() {
     return this.rolesService.findAll();
   }
 
   @Get(':id')
-  @RequirePermission('read', 'roles')
+  @RequirePermissions('roles:read')
   findOne(@Param('id') id: string) {
     return this.rolesService.findOne(id);
   }
 
   @Post()
-  @RequirePermission('create', 'roles')
+  @RequirePermissions('roles:create')
   create(@Body() createRoleDto: CreateRoleDto) {
     return this.rolesService.create(createRoleDto);
   }
 
   @Patch(':id')
-  @RequirePermission('update', 'roles')
+  @RequirePermissions('roles:update')
   update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
     return this.rolesService.update(id, updateRoleDto);
   }
 
   @Delete(':id')
-  @RequirePermission('delete', 'roles')
+  @RequirePermissions('roles:delete')
   remove(@Param('id') id: string) {
     return this.rolesService.delete(id);
   }
 
   @Put(':id/permissions')
-  @RequirePermission('update', 'roles')
+  @RequirePermissions('roles:update')
   assignPermissions(
     @Param('id') id: string,
     @Body() assignPermissionsDto: AssignPermissionsDto,
   ) {
     return this.rolesService.assignPermissions(id, assignPermissionsDto);
+  }
+
+  @Post(':id/duplicate')
+  @RequirePermissions('roles:create')
+  duplicateRole(@Param('id') id: string) {
+    return this.rolesService.duplicate(id);
   }
 }
