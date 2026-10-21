@@ -167,6 +167,10 @@ export class PrismaService
       // Ensure missing tables and columns exist in PostgreSQL database
       try {
         await this.$executeRawUnsafe(
+          `ALTER TABLE IF EXISTS "CreditDebitNoteItem" ADD COLUMN IF NOT EXISTS "productId" TEXT;
+           ALTER TABLE IF EXISTS "CreditDebitNoteItem" ADD COLUMN IF NOT EXISTS "uomId" TEXT;`,
+        );
+        await this.$executeRawUnsafe(
           `ALTER TABLE IF EXISTS "Department" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;`,
         );
         await this.$executeRawUnsafe(`

@@ -4,6 +4,7 @@
 /build
 /uploads
 /uploads/*
+/scripts
 # Logs
 logs
 *.log

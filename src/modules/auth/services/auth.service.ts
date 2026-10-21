@@ -46,17 +46,12 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(payload);
     const permissionData = await this.caslAbilityFactory.getUserPermissionsPayload(user.id);
 
+    const permData = await this.caslAbilityFactory.getUserPermissionsPayload(user.id);
+
     return {
       message: 'Login successful',
       access_token: accessToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.roleRelation ? user.roleRelation.name : user.role,
-        roleDisplayName: user.roleRelation?.displayName || user.role,
-      },
-      ...permissionData,
+      ...permData,
     };
   }
 

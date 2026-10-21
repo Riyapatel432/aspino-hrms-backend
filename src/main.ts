@@ -16,6 +16,7 @@ async function bootstrap() {
     './uploads/cnv-documents',
     './uploads/rent-receipts',
     './uploads/onboarding',
+    './uploads/purchase-orders',
   ];
   uploadDirs.forEach((dir) => {
     if (!fs.existsSync(dir)) {
@@ -29,6 +30,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
@@ -39,6 +41,9 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3002',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],

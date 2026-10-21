@@ -185,3 +185,103 @@ enum PayslipStatus {
   GENERATED
   PAID
 }
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+enum PurchaseOrderType {
+  PROCUREMENT
+  SALES
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ISSUED
+  CONFIRMED
+  PARTIALLY_DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceType {
+  SALES
+  PURCHASE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum NoteType {
+  CREDIT_NOTE
+  DEBIT_NOTE
+}
+
+enum NoteStatus {
+  DRAFT
+  ISSUED
+  APPLIED
+  CANCELLED
+}
+
+enum ChallanStatus {
+  DRAFT
+  ISSUED
+  DELIVERED
+  CANCELLED
+}
+
+enum ChallanType {
+  SUPPLY
+  JOB_WORK
+  SUPPLY_ON_APPROVAL
+  LINE_SALE
+  BRANCH_TRANSFER
+  OTHER
+}
+
+enum MaintenanceItemCategory {
+  SPARE_PARTS
+  TOOLS
+  CONSUMABLES
+  ELECTRICAL
+  MECHANICAL
+  PNEUMATICS
+  INSTRUMENTATION
+  SAFETY_PPE
+  OTHER
+}
+
+enum MaintenanceRequisitionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PARTIALLY_ISSUED
+  ISSUED
+  REJECTED
+  CANCELLED
+}
+
+enum MaintenanceRequisitionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+  PREVENTIVE_MAINTENANCE
+}
+
+enum MaintenanceIssueStatus {
+  COMPLETED
+  REVERSED
+}

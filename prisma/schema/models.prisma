@@ -113,6 +113,8 @@ model Employee {
   replacedRequisitions JobRequisition[] @relation("RequisitionReplacementEmployee")
   breakIncidents   BreakMisuseIncident[]
   shiftAuditLogs   ShiftAuditLog[]
+  requestedMaintenanceRequisitions MaintenanceRequisition[] @relation("MaintenanceRequesterEmployee")
+  assignedMaintenanceRequisitions  MaintenanceRequisition[] @relation("MaintenanceAssigneeEmployee")
 }
 
 model Department {
@@ -566,6 +568,7 @@ model Bank {
   isActive  Boolean    @default(true)
   suppliers Supplier[]
   employees Employee[]
+  invoices  Invoice[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
@@ -593,6 +596,11 @@ model Supplier {
   
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  purchaseOrders     PurchaseOrder[]
+  invoices           Invoice[]
+  creditDebitNotes   CreditDebitNote[]
+  deliveryChallans   DeliveryChallan[]
 }
 
 model DepartmentLeaveMaster {
@@ -797,6 +805,11 @@ model Vendor {
   approvalStatus    String   @default("Approved")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  purchaseOrders    PurchaseOrder[]
+  invoices          Invoice[]
+  creditDebitNotes  CreditDebitNote[]
+  deliveryChallans  DeliveryChallan[]
 }
 
 model Customer {
@@ -817,7 +830,14 @@ model Customer {
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  quotations      Quotation[]
+  purchaseOrders  PurchaseOrder[]
+  invoices        Invoice[]
+  creditDebitNotes CreditDebitNote[]
+  deliveryChallans DeliveryChallan[]
 }
+
 
 model ProductCategory {
   id            String               @id @default(uuid())
@@ -863,7 +883,14 @@ model Product {
   isActive           Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+
+  quotationItems     QuotationItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  invoiceItems       InvoiceItem[]
+  creditDebitNoteItems CreditDebitNoteItem[]
+  deliveryChallanItems DeliveryChallanItem[]
 }
+
 
 model Uom {
   id               String   @id @default(uuid())
@@ -874,6 +901,13 @@ model Uom {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  invoiceItems       InvoiceItem[]
+  quotationItems     QuotationItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  creditDebitNoteItems CreditDebitNoteItem[]
+  deliveryChallanItems DeliveryChallanItem[]
+  maintenanceItems   MaintenanceItem[]
 }
 
 model PackingMaterial {
@@ -925,4 +959,661 @@ model StorageLocation {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model Quotation {
+  id                  String          @id @default(uuid())
+  quotationNumber     String          @unique // e.g. "QTN-2026-0001"
+  customerId          String?
+  customer            Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName        String
+  customerEmail       String?
+  customerPhone       String?
+  billingAddress      String?
+  shippingAddress     String?
+  gstNo               String?
+  quotationDate       DateTime        @default(now())
+  validUntil          DateTime?
+  referenceNumber     String?         // RFQ or Inquiry No
+  customerPoNumber    String?         // Customer PO Number if received
+  customerPoDate      DateTime?       // Customer PO Date
+  customerPoNotes     String?         // Customer PO Remarks
+  status              QuotationStatus @default(DRAFT)
+  currency            String          @default("INR")
+  subTotal            Float           @default(0.0)
+  discountPercentage  Float           @default(0.0)
+  discountAmount      Float           @default(0.0)
+  taxType             String          @default("GST") // "GST", "IGST", "NONE"
+  taxPercentage       Float           @default(0.0)
+  taxAmount           Float           @default(0.0)
+  shippingCharges     Float           @default(0.0)
+  otherCharges        Float           @default(0.0)
+  totalAmount         Float           @default(0.0)
+  paymentTerms        String?         // e.g. "50% Advance, balance before dispatch"
+  deliveryTerms       String?         // e.g. "Ex-Factory", "Door Delivery"
+  termsAndConditions  String?
+  notes               String?
+  preparedBy          String?
+  approvedBy          String?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  items               QuotationItem[]
+  purchaseOrders      PurchaseOrder[]
+  invoices            Invoice[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([quotationNumber])
+}
+
+model QuotationItem {
+  id              String    @id @default(uuid())
+  quotationId     String
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  uomId           String?
+  uomRelation     Uom?      @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  itemCode        String?   // Product code / SKU
+  itemName        String    // Product or custom item name
+  description     String?   // Pack size, strength, specifications
+  hsnCode         String?   // HSN / SAC code
+  uom             String?   // Unit of measurement
+  quantity        Float     @default(1)
+  unitPrice       Float     @default(0.0)
+  discountPercent Float     @default(0.0)
+  taxPercent      Float     @default(0.0)
+  totalPrice      Float     @default(0.0)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([quotationId])
+  @@index([productId])
+  @@index([uomId])
+}
+
+model PurchaseOrder {
+  id                    String              @id @default(uuid())
+  poNumber              String              @unique // e.g. "PO-2026-0001"
+  type                  PurchaseOrderType   @default(PROCUREMENT)
+  status                PurchaseOrderStatus @default(DRAFT)
+  poDate                DateTime            @default(now())
+  expectedDeliveryDate  DateTime?
+  referenceNumber       String?             // RFQ No / Vendor Quote No / Customer Ref
+  documentUrl           String?             // Uploaded PDF document URL / attachment
+  
+  // Link to Quotation if converted/sales order
+  quotationId           String?
+  quotation             Quotation?          @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  // Link to Supplier (Procurement)
+  supplierId            String?
+  supplier              Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  // Link to Vendor (Procurement / Services)
+  vendorId              String?
+  vendor                Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Link to Customer (Sales PO)
+  customerId            String?
+  customer              Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // Party snapshot (snapshot of supplier/vendor/customer at PO generation)
+  partyName             String
+  partyEmail            String?
+  partyPhone            String?
+  partyAddress          String?
+  partyGstNo            String?
+
+  // Shipping & Billing
+  billingAddress        String?
+  shippingAddress       String?
+
+  // Financials
+  currency              String              @default("INR")
+  subTotal              Float               @default(0.0)
+  discountPercentage    Float               @default(0.0)
+  discountAmount        Float               @default(0.0)
+  taxType               String              @default("GST") // "GST", "IGST", "NONE"
+  taxPercentage         Float               @default(0.0)
+  taxAmount             Float               @default(0.0)
+  shippingCharges       Float               @default(0.0)
+  otherCharges          Float               @default(0.0)
+  totalAmount           Float               @default(0.0)
+
+  // Terms & Delivery
+  paymentTerms          String?             // e.g. "30 Days Net", "Advance"
+  deliveryTerms         String?             // e.g. "Door Delivery", "Ex-Works"
+  termsAndConditions    String?
+  notes                 String?
+
+  // Audit
+  preparedBy            String?
+  approvedBy            String?
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  items                 PurchaseOrderItem[]
+  invoices              Invoice[]
+
+  @@index([poNumber])
+  @@index([type])
+  @@index([status])
+  @@index([supplierId])
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([quotationId])
+}
+
+model PurchaseOrderItem {
+  id                  String        @id @default(uuid())
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  uomId               String?
+  uomRelation         Uom?          @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  itemCode            String?       // SKU / Code
+  itemName            String        // Name of item / material
+  description         String?       // Specifications / Grade
+  hsnCode             String?
+  uom                 String?
+  quantity            Float         @default(1)
+  unitPrice           Float         @default(0.0)
+  discountPercent     Float         @default(0.0)
+  taxPercent          Float         @default(0.0)
+  totalPrice          Float         @default(0.0)
+  sortOrder           Int           @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([uomId])
+}
+
+model Invoice {
+  id                    String        @id @default(uuid())
+  invoiceNumber         String        @unique // e.g. "INV-2026-0001" or "PINV-2026-0001"
+  type                  InvoiceType   @default(SALES) // SALES or PURCHASE
+  status                InvoiceStatus @default(DRAFT)
+  invoiceDate           DateTime      @default(now())
+  dueDate               DateTime?
+  referenceNumber       String?       // PO No, Challan No, Vendor Bill No
+  documentUrl           String?       // Uploaded PDF/scan
+
+  // Relations
+  quotationId           String?
+  quotation             Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  purchaseOrderId       String?
+  purchaseOrder         PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  customerId            String?
+  customer              Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  supplierId            String?
+  supplier              Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  vendorId              String?
+  vendor                Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Party snapshot
+  partyName             String
+  partyEmail            String?
+  partyPhone            String?
+  partyAddress          String?
+  partyGstNo            String?
+  partyPanNo            String?
+
+  // Shipping & Billing
+  billingAddress        String?
+  shippingAddress       String?
+  placeOfSupply         String?
+  deliveryMode          String?       // Mode of Delivery: "Road", "Air", "Courier", "Sea", "Hand Delivery / Self"
+  truckNumber           String?       // Truck / Vehicle Number e.g. "TS09EA1234"
+  transporterName       String?       // Transporter / Carrier Name
+  lrNumber              String?       // LR / Docket / Consignment Number
+  driverName            String?       // Driver Name
+  driverContact         String?       // Driver Mobile / Contact Number
+
+  // Financials
+  currency              String        @default("INR")
+  subTotal              Float         @default(0.0)
+  discountPercentage    Float         @default(0.0)
+  discountAmount        Float         @default(0.0)
+  taxType               String        @default("GST") // "GST", "IGST", "NONE"
+  taxPercentage         Float         @default(0.0)
+  cgstAmount            Float         @default(0.0)
+  sgstAmount            Float         @default(0.0)
+  igstAmount            Float         @default(0.0)
+  taxAmount             Float         @default(0.0)
+  shippingCharges       Float         @default(0.0)
+  otherCharges          Float         @default(0.0)
+  roundOff              Float         @default(0.0)
+  totalAmount           Float         @default(0.0)
+  paidAmount            Float         @default(0.0)
+  balanceAmount         Float         @default(0.0)
+
+  // Payment Details
+  paymentTerms          String?       // e.g. "30 Days Net", "Immediate"
+  paymentMethod         String?       // "BANK_TRANSFER", "CHEQUE", "UPI", "CASH"
+  bankId                Int?
+  bank                  Bank?         @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  bankName              String?
+  bankAccountNumber     String?
+  bankIfsc              String?
+  termsAndConditions    String?
+  notes                 String?
+
+  // Audit
+  preparedBy            String?
+  approvedBy            String?
+  isActive              Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  items                 InvoiceItem[]
+  creditDebitNotes      CreditDebitNote[]
+
+  @@index([invoiceNumber])
+  @@index([type])
+  @@index([status])
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([vendorId])
+  @@index([bankId])
+  @@index([purchaseOrderId])
+  @@index([quotationId])
+}
+
+model InvoiceItem {
+  id              String    @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  uomId           String?
+  uomRelation     Uom?      @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  itemCode        String?
+  itemName        String
+  description     String?
+  hsnCode         String?
+  uom             String?
+  batchNumber     String?
+  expiryDate      DateTime?
+  quantity        Float     @default(1)
+  unitPrice       Float     @default(0.0)
+  discountPercent Float     @default(0.0)
+  taxPercent      Float     @default(0.0)
+  cgstAmount      Float     @default(0.0)
+  sgstAmount      Float     @default(0.0)
+  igstAmount      Float     @default(0.0)
+  totalPrice      Float     @default(0.0)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([uomId])
+}
+
+model CreditDebitNote {
+  id                    String        @id @default(uuid())
+  noteNumber            String        @unique // e.g. "CN-2026-0001" or "DN-2026-0001"
+  type                  NoteType      @default(CREDIT_NOTE) // CREDIT_NOTE or DEBIT_NOTE
+  status                NoteStatus    @default(DRAFT)
+  noteDate              DateTime      @default(now())
+  reason                String        // e.g. "Sales Return", "Price Correction", "Post-Sale Discount", "Deficiency in Services", "Order Cancellation", "Other"
+
+  // Link to Original Invoice
+  invoiceId             String?
+  invoice               Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceNumber         String?       // Snapshot of original invoice number
+  originalInvoiceDate   DateTime?
+
+  // Parties
+  customerId            String?
+  customer              Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierId            String?
+  supplier              Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  vendorId              String?
+  vendor                Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  partyName             String
+  partyEmail            String?
+  partyPhone            String?
+  partyAddress          String?
+  partyGstNo            String?
+  partyPanNo            String?
+
+  billingAddress        String?
+  shippingAddress       String?
+  placeOfSupply         String?
+
+  // Financials
+  currency              String        @default("INR")
+  subTotal              Float         @default(0.0)
+  taxType               String        @default("GST") // "GST", "IGST", "NONE"
+  taxPercentage         Float         @default(0.0)
+  cgstAmount            Float         @default(0.0)
+  sgstAmount            Float         @default(0.0)
+  igstAmount            Float         @default(0.0)
+  taxAmount             Float         @default(0.0)
+  otherCharges          Float         @default(0.0)
+  roundOff              Float         @default(0.0)
+  totalAmount           Float         @default(0.0)
+  adjustedAmount        Float         @default(0.0)
+  balanceAmount         Float         @default(0.0)
+
+  termsAndConditions    String?
+  notes                 String?
+  documentUrl           String?
+
+  preparedBy            String?
+  approvedBy            String?
+  isActive              Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  items                 CreditDebitNoteItem[]
+
+  @@index([noteNumber])
+  @@index([type])
+  @@index([status])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([vendorId])
+}
+
+model CreditDebitNoteItem {
+  id              String           @id @default(uuid())
+  noteId          String
+  note            CreditDebitNote  @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  uomId           String?
+  uomRelation     Uom?             @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  itemCode        String?
+  itemName        String
+  description     String?
+  hsnCode         String?
+  uom             String?
+  batchNumber     String?
+  quantity        Float            @default(1)
+  unitPrice       Float            @default(0.0)
+  discountPercent Float            @default(0.0)
+  taxPercent      Float            @default(0.0)
+  cgstAmount      Float            @default(0.0)
+  sgstAmount      Float            @default(0.0)
+  igstAmount      Float            @default(0.0)
+  totalPrice      Float            @default(0.0)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([noteId])
+  @@index([productId])
+  @@index([uomId])
+}
+
+model DeliveryChallan {
+  id                  String           @id @default(uuid())
+  challanNumber       String           @unique
+  status              ChallanStatus    @default(DRAFT)
+  challanType         ChallanType      @default(SUPPLY)
+  challanDate         DateTime         @default(now())
+
+  invoiceId           String?
+  invoiceNumber       String?
+  poNumber            String?
+  eWayBillNumber      String?
+
+  transportMode       String?
+  vehicleNumber       String?
+  transporterName     String?
+  lrNumber            String?
+  lrDate              DateTime?
+
+  // Parties
+  customerId          String?
+  customer            Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierId          String?
+  supplier            Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  vendorId            String?
+  vendor              Vendor?          @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  partyName           String
+  partyEmail          String?
+  partyPhone          String?
+  partyAddress        String?
+  partyGstNo          String?
+  partyPanNo          String?
+
+  dispatchAddress     String?
+  shippingAddress     String?
+  placeOfSupply       String?
+
+  // Financials
+  currency            String           @default("INR")
+  subTotal            Float            @default(0.0)
+  taxType             String           @default("GST")
+  taxAmount           Float            @default(0.0)
+  cgstAmount          Float            @default(0.0)
+  sgstAmount          Float            @default(0.0)
+  igstAmount          Float            @default(0.0)
+  otherCharges        Float            @default(0.0)
+  roundOff            Float            @default(0.0)
+  totalAmount         Float            @default(0.0)
+
+  termsAndConditions  String?
+  notes               String?
+  documentUrl         String?
+
+  preparedBy          String?
+  approvedBy          String?
+  isActive            Boolean          @default(true)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  items               DeliveryChallanItem[]
+
+  @@index([challanNumber])
+  @@index([status])
+  @@index([challanType])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([vendorId])
+}
+
+model DeliveryChallanItem {
+  id              String           @id @default(uuid())
+  challanId       String
+  challan         DeliveryChallan  @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  uomId           String?
+  uomRelation     Uom?             @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  itemCode        String?
+  itemName        String
+  description     String?
+  hsnCode         String?
+  uom             String?
+  batchNumber     String?
+  quantity        Float            @default(1)
+  unitPrice       Float            @default(0.0)
+  discountPercent Float            @default(0.0)
+  taxPercent      Float            @default(0.0)
+  cgstAmount      Float            @default(0.0)
+  sgstAmount      Float            @default(0.0)
+  igstAmount      Float            @default(0.0)
+  totalPrice      Float            @default(0.0)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([challanId])
+  @@index([productId])
+  @@index([uomId])
+}
+
+// ==========================================
+// 11. MAIN STORE (MAINTENANCE & ENGINEERING)
+// ==========================================
+
+model MaintenanceItem {
+  id                  String                  @id @default(uuid())
+  partNumber          String                  @unique // e.g. "SPR-BRG-6205", "TOOL-TRQ-WRENCH-01"
+  name                String                  // e.g. "Deep Groove Ball Bearing 6205-2RS"
+  description         String?                 // Technical specifications / make / model
+  category            MaintenanceItemCategory @default(SPARE_PARTS)
+  equipmentLinkage    String?                 // Linked Machine/Equipment, e.g. "Blister Packing Machine - B-01", "Tablet Compression - TC-03"
+  uomId               String?
+  uomRelation         Uom?                    @relation(fields: [uomId], references: [id], onDelete: SetNull)
+  uom                 String                  @default("NOS") // NOS, SET, MTR, LTR, KG, PKT
+  storageBinRack      String?                 // Shelf / Rack / Bin, e.g. "M-RACK-02-B3"
+  
+  // Stock Control
+  currentStock        Float                   @default(0.0)
+  minimumStock        Float                   @default(0.0) // Low stock alert threshold
+  maximumStock        Float?                  @default(0.0)
+  reorderQuantity     Float?                  @default(0.0)
+  unitCost            Float                   @default(0.0)
+  
+  // PM Linkage & Procurement flags
+  isPreventiveLinked  Boolean                 @default(false)
+  pmScheduleReference String?                 // e.g. "PM-SCH-MONTHLY-BLISTER"
+  preferredSupplier   String?                 // Supplier name or code
+  
+  isActive            Boolean                 @default(true)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  requisitionItems    MaintenanceRequisitionItem[]
+  issueItems          MaintenanceIssueItem[]
+
+  @@index([category])
+  @@index([equipmentLinkage])
+  @@index([uomId])
+}
+
+model MaintenanceRequisition {
+  id                  String                         @id @default(uuid())
+  requisitionNumber   String                         @unique // e.g. "MR-2026-0001"
+  requisitionDate     DateTime                       @default(now())
+  department          String                         @default("Maintenance")
+  requesterName       String                         // Requester staff name
+  requesterEmployeeId String?
+  requesterEmployee   Employee?                      @relation("MaintenanceRequesterEmployee", fields: [requesterEmployeeId], references: [id], onDelete: SetNull)
+  
+  assignedToName       String?                        // Technician / Engineer assigned
+  assignedToEmployeeId String?                        // Employee ID assigned
+  assignedToEmployee   Employee?                      @relation("MaintenanceAssigneeEmployee", fields: [assignedToEmployeeId], references: [id], onDelete: SetNull)
+  
+  purpose             String                         // Purpose / Machine breakdown or preventive work order reference
+  equipmentMachine    String?                        // Target Equipment / Line
+  workOrderNumber     String?                        // Maintenance Work Order / Job Card #
+  priority            MaintenanceRequisitionPriority @default(MEDIUM)
+  status              MaintenanceRequisitionStatus   @default(DRAFT)
+  
+  pmScheduleId        String?                        // Optional PM schedule reference
+  remarks             String?
+  
+  approvedBy          String?
+  approvedAt          DateTime?
+  rejectionReason     String?
+  
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+
+  items               MaintenanceRequisitionItem[]
+  issues              MaintenanceIssue[]
+
+  @@index([status])
+  @@index([equipmentMachine])
+  @@index([requesterEmployeeId])
+  @@index([assignedToEmployeeId])
+}
+
+model MaintenanceRequisitionItem {
+  id                  String                 @id @default(uuid())
+  requisitionId       String
+  requisition         MaintenanceRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  
+  itemId              String
+  item                MaintenanceItem        @relation(fields: [itemId], references: [id])
+  
+  requestedQuantity   Float                  @default(1.0)
+  issuedQuantity      Float                  @default(0.0)
+  unitCost            Float                  @default(0.0)
+  remarks             String?
+  
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  @@index([requisitionId])
+  @@index([itemId])
+}
+
+model MaintenanceIssue {
+  id                  String                 @id @default(uuid())
+  issueNumber         String                 @unique // e.g. "MI-2026-0001"
+  issueDate           DateTime               @default(now())
+  
+  requisitionId       String
+  requisition         MaintenanceRequisition @relation(fields: [requisitionId], references: [id])
+  
+  issuedBy            String                 // Store keeper / issuer name
+  receivedBy          String                 // Engineer / technician recipient
+  purpose             String                 // Recorded purpose
+  equipmentMachine    String?                // Machine on which part is installed
+  
+  status              MaintenanceIssueStatus @default(COMPLETED)
+  remarks             String?
+  
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  items               MaintenanceIssueItem[]
+
+  @@index([requisitionId])
+}
+
+model MaintenanceIssueItem {
+  id                  String           @id @default(uuid())
+  issueId             String
+  issue               MaintenanceIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  
+  itemId              String
+  item                MaintenanceItem  @relation(fields: [itemId], references: [id])
+  
+  quantityIssued      Float            @default(1.0)
+  unitCost            Float            @default(0.0)
+  totalCost           Float            @default(0.0)
+  remarks             String?
+  
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([issueId])
+  @@index([itemId])
+}
+
+model StoreCategory {
+  id            String    @id @default(uuid())
+  categoryCode  String    @unique
+  categoryName  String
+  description   String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([categoryCode])
 }

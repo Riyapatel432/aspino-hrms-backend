@@ -46,6 +46,33 @@ export class EmployeesController {
     return { employee, photoUrl };
   }
 
+  // ── GET /employees  →  List all active employees for dropdowns ──────────
+  @Get()
+  async getAllEmployees() {
+    return this.prisma.employee.findMany({
+      where: {
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        designation: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        firstName: 'asc',
+      },
+    });
+  }
+
   // ── GET /employees/qr/:id  →  JSON profile (kept for backward compat) ───────
   @Get('qr/:id')
   async getEmployeeJson(@Param('id') id: string) {
