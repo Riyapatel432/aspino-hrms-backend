@@ -10,7 +10,11 @@ export function buildEmployeeSearchConditions(
 
   const conditions: Prisma.EmployeeWhereInput[] = [
     { firstName: { contains: term, mode: 'insensitive' } },
+    { middleName: { contains: term, mode: 'insensitive' } },
     { lastName: { contains: term, mode: 'insensitive' } },
+    { fullName: { contains: term, mode: 'insensitive' } },
+    { phone: { contains: term, mode: 'insensitive' } },
+    { employeeGrade: { contains: term, mode: 'insensitive' } },
     { employeeId: { contains: term, mode: 'insensitive' } },
     { email: { contains: term, mode: 'insensitive' } },
     { department: { name: { contains: term, mode: 'insensitive' } } },

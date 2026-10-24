@@ -17,7 +17,7 @@ export class PrismaService
   private pool: Pool;
 
   constructor() {
-    const connectionString = process.env.DATABASE_URL;
+    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:admin%40123@localhost:5432/aspino_erp?schema=public';
     const pool = new Pool({ connectionString });
     const adapter = new PrismaPg(pool);
     super({ adapter });

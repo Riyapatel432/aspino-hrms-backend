@@ -1,4 +1,8 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -58,9 +62,9 @@ async function bootstrap() {
   // Serve uploads statically
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-  const port = Number(process.env.PORT) || 5000;
+  const port = Number(process.env.PORT) || 5001;
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port);
 
   console.log(`Admin API is running at http://localhost:${port}`);
 }

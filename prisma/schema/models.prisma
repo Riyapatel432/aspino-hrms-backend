@@ -62,11 +62,14 @@ model Employee {
   userId           String?              @unique
   user             User?                @relation(fields: [userId], references: [id])
   firstName        String
+  middleName       String?
   lastName         String
+  fullName         String?              // Full Name (derived from first, middle/second, last name)
   email            String               @unique
   departmentId     String
   department       Department           @relation(fields: [departmentId], references: [id])
   designation      String
+  employeeGrade    String?              // Employeed grade
   managerId        String?
   manager          Employee?            @relation("EmployeeManager", fields: [managerId], references: [id])
   subordinates     Employee[]           @relation("EmployeeManager")
@@ -77,9 +80,14 @@ model Employee {
   status           EmployeeStatus       @default(ACTIVE)
   
   // Personal & Contact Details
+  gender           String?              // Gender
+  bloodGroup       String?              // Blood group
   dob              DateTime?
-  address          String?
-  phone            String?
+  address          String?              // Residential address (backward compatible)
+  presentAddress   String?              // Present Address
+  residentAddress  String?              // Resident Address
+  phone            String?              // Contact number
+  alternatePhone   String?              // Alternate contact number
   qrToken          String               @unique @default(uuid())
   resumeUrl        String?
 
@@ -389,6 +397,7 @@ model BreakMisuseIncident {
   complaintDetails String
   status           String       @default("REPORTED") // REPORTED, APPROVED, WAIVED
   createdAt        DateTime     @default(now())
+  updatedAt        DateTime?    @updatedAt
 }
 
 model LeaveBalance {
@@ -473,6 +482,8 @@ model TrainingRecord {
   completionDate DateTime
   expiryDate     DateTime?
   status         TrainingStatus @default(COMPLETED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?      @updatedAt
 }
 
 model ExitProcess {

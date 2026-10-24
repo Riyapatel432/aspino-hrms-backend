@@ -57,9 +57,12 @@ export class EmployeesController {
         id: true,
         employeeId: true,
         firstName: true,
+        middleName: true,
         lastName: true,
+        fullName: true,
         email: true,
         designation: true,
+        employeeGrade: true,
         department: {
           select: {
             id: true,
@@ -81,12 +84,21 @@ export class EmployeesController {
       id: employee.id,
       employeeId: employee.employeeId,
       firstName: employee.firstName,
+      middleName: employee.middleName,
       lastName: employee.lastName,
+      fullName: employee.fullName || [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' '),
       email: employee.email,
       department: employee.department?.name || '',
       designation: employee.designation,
+      employeeGrade: employee.employeeGrade,
       dateOfJoining: employee.dateOfJoining,
       phone: employee.phone,
+      alternatePhone: employee.alternatePhone,
+      gender: employee.gender,
+      bloodGroup: employee.bloodGroup,
+      presentAddress: employee.presentAddress,
+      residentAddress: employee.residentAddress,
+      address: employee.address,
       status: employee.status,
       photoUrl,
     };
@@ -103,7 +115,7 @@ export class EmployeesController {
       : qrToken;
     const { employee, photoUrl } = await this.resolveEmployee(cleanToken);
 
-    const fullName = `${employee.firstName} ${employee.lastName}`;
+    const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
     const joinDate = employee.dateOfJoining
       ? new Date(employee.dateOfJoining).toLocaleDateString('en-IN', {
           day: '2-digit',
@@ -146,31 +158,62 @@ export class EmployeesController {
     // ── Header (Flat Dark Navy) ──────────────────────────────────────────────
     doc.rect(0, 0, W, 65).fill('#0b1329');
     // Header green accent stripe
-    doc.rect(0, 65, W, 3).fill('#10b981');
+    doc.rect(0, 65, W, 3).fill('#1e90cf');
 
     // ── Header Logo ────────────────────────────────────────────────────────
-    const logoPath =
-      'd:\\Aspino-Hrms\\nextjs-aspino-hrms\\public\\aspino-logo.png';
-    if (fs.existsSync(logoPath)) {
+    const possibleLogoPaths = [
+      path.join(process.cwd(), 'public', 'aspino-icon.png'),
+      path.join(__dirname, '..', '..', '..', '..', 'public', 'aspino-icon.png'),
+      'e:\\Aspino\\aspino-hrms-backend\\public\\aspino-icon.png',
+      'e:\\Aspino\\aspino-hrms-frontend\\public\\aspino-icon.png',
+    ];
+    const resolvedIconPath = possibleLogoPaths.find((p) => fs.existsSync(p));
+
+    if (resolvedIconPath) {
       try {
-        doc.image(logoPath, W / 2 - 50, 14, {
-          fit: [100, 36],
+        const iconW = 28;
+        const badgeR = 17;
+        const startX = 52;
+        // Circular white badge for logo mark
+        doc.circle(startX + badgeR, 32, badgeR).fill('#ffffff');
+        doc.image(resolvedIconPath, startX + badgeR - iconW / 2, 32 - iconW / 2, {
+          fit: [iconW, iconW],
           align: 'center',
           valign: 'center',
         });
+        doc
+          .fillColor('#ffffff')
+          .font('Helvetica-Bold')
+          .fontSize(14)
+          .text('ASPINO', startX + 40, 20, { align: 'left' });
+        doc
+          .fillColor('#1e90cf')
+          .font('Helvetica-Bold')
+          .fontSize(6)
+          .text('HRMS SYSTEM', startX + 41, 37, { align: 'left' });
       } catch (err) {
         doc
-          .fillColor('#10b981')
+          .fillColor('#ffffff')
           .font('Helvetica-Bold')
-          .fontSize(12)
-          .text('ASPINO', 0, 20, { align: 'center', width: W });
+          .fontSize(14)
+          .text('ASPINO', 0, 22, { align: 'center', width: W });
+        doc
+          .fillColor('#1e90cf')
+          .font('Helvetica-Bold')
+          .fontSize(6)
+          .text('HRMS SYSTEM', 0, 39, { align: 'center', width: W });
       }
     } else {
       doc
-        .fillColor('#10b981')
+        .fillColor('#ffffff')
         .font('Helvetica-Bold')
-        .fontSize(12)
-        .text('ASPINO', 0, 20, { align: 'center', width: W });
+        .fontSize(14)
+        .text('ASPINO', 0, 22, { align: 'center', width: W });
+      doc
+        .fillColor('#1e90cf')
+        .font('Helvetica-Bold')
+        .fontSize(6)
+        .text('HRMS SYSTEM', 0, 39, { align: 'center', width: W });
     }
 
     // ── Avatar Photo (Symmetric Double-Ring Circle) ────────────────────────
@@ -179,7 +222,7 @@ export class EmployeesController {
     const avatarR = 32;
 
     // Draw outer emerald green ring
-    doc.circle(W / 2, avatarY + avatarR, avatarR + 2).fill('#10b981');
+    doc.circle(W / 2, avatarY + avatarR, avatarR + 2).fill('#1e90cf');
 
     // Draw inner white border ring
     doc.circle(W / 2, avatarY + avatarR, avatarR).fill('#ffffff');
@@ -230,7 +273,7 @@ export class EmployeesController {
       .text(fullName, 0, 152, { align: 'center', width: W });
 
     doc
-      .fillColor('#10b981')
+      .fillColor('#1e90cf')
       .font('Helvetica-Bold')
       .fontSize(7.5)
       .text(employee.designation.toUpperCase(), 0, 166, {
@@ -270,29 +313,29 @@ export class EmployeesController {
         .stroke();
     };
 
-    drawField('EMPLOYEE ID', employee.employeeId || '—', 187);
+    drawField('EMPLOYEE ID', employee.employeeId || '—', 183);
     drawField(
       'DEPARTMENT',
       (employee.department?.name || '').toUpperCase(),
-      202,
+      197,
     );
-    drawField('JOIN DATE', joinDate, 217);
-    drawField('PHONE', employee.phone || '—', 232);
-
+    drawField('JOIN DATE', joinDate, 211);
+    drawField('PHONE', employee.phone || '—', 225);
+    drawField('BLOOD GROUP', employee.bloodGroup || '—', 239);
     // ── Footer ─────────────────────────────────────────────────────────────
     const footerY = 275;
 
     // Solid dark footer
     doc.rect(0, footerY, W, H - footerY).fill('#0b1329');
     // Top border line of bottom bar
-    doc.rect(0, footerY, W, 2).fill('#10b981');
+    doc.rect(0, footerY, W, 2).fill('#1e90cf');
 
     // Verification text
     doc
-      .fillColor('#10b981')
+      .fillColor('#1e90cf')
       .font('Helvetica-Bold')
       .fontSize(6.5)
-      .text('✓ VERIFIED DIGITAL ID', 0, footerY + 14, {
+      .text('VERIFIED DIGITAL ID', 0, footerY + 14, {
         align: 'center',
         width: W,
       });

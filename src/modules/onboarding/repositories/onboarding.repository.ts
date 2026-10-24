@@ -208,6 +208,45 @@ export class OnboardingRepository {
     if (empData.employeeId) {
       empData.employeeId = empData.employeeId.trim().toUpperCase();
     }
+    if (empData.firstName) {
+      empData.firstName = empData.firstName.trim();
+    }
+    if (empData.middleName !== undefined) {
+      empData.middleName = empData.middleName ? empData.middleName.trim() : null;
+    }
+    if (empData.lastName) {
+      empData.lastName = empData.lastName.trim();
+    }
+    if (empData.fullName) {
+      empData.fullName = empData.fullName.trim();
+    } else if (empData.firstName || empData.middleName !== undefined || empData.lastName) {
+      const existing = await this.prisma.employee.findUnique({
+        where: { id },
+        select: { firstName: true, middleName: true, lastName: true },
+      });
+      const f = empData.firstName !== undefined ? empData.firstName.trim() : existing?.firstName;
+      const m = empData.middleName !== undefined ? empData.middleName?.trim() : existing?.middleName;
+      const l = empData.lastName !== undefined ? empData.lastName.trim() : existing?.lastName;
+      empData.fullName = [f, m, l].filter(Boolean).join(' ').trim();
+    }
+    if (empData.contactNumber && !empData.phone) {
+      empData.phone = empData.contactNumber.trim();
+    }
+    delete empData.contactNumber;
+
+    if (empData.alternateContactNumber && !empData.alternatePhone) {
+      empData.alternatePhone = empData.alternateContactNumber.trim();
+    }
+    delete empData.alternateContactNumber;
+
+    if (empData.grade && !empData.employeeGrade) {
+      empData.employeeGrade = empData.grade.trim();
+    }
+    delete empData.grade;
+
+    if (empData.residentAddress && !empData.address) {
+      empData.address = empData.residentAddress.trim();
+    }
     if (empData.dob !== undefined) {
       empData.dob = empData.dob ? new Date(empData.dob) : null;
     }
@@ -370,11 +409,22 @@ export class OnboardingRepository {
   async createEmployee(data: {
     employeeId?: string;
     firstName: string;
+    middleName?: string;
     lastName: string;
+    fullName?: string;
     email: string;
     phone?: string;
+    contactNumber?: string;
+    alternatePhone?: string;
+    alternateContactNumber?: string;
+    gender?: string;
+    bloodGroup?: string;
+    employeeGrade?: string;
+    grade?: string;
     dob?: string | Date;
     address?: string;
+    presentAddress?: string;
+    residentAddress?: string;
     departmentId: string;
     designation: string;
     dateOfJoining: string | Date;
@@ -413,16 +463,31 @@ export class OnboardingRepository {
 
       const parsedDob = data.dob ? new Date(data.dob) : null;
 
+      const primaryPhone = (data.phone || data.contactNumber || '').trim() || null;
+      const altPhone = (data.alternatePhone || data.alternateContactNumber || '').trim() || null;
+      const resAddress = (data.residentAddress || data.address || '').trim() || null;
+      const presAddress = data.presentAddress?.trim() || null;
+
+      const computedFullName = (data.fullName?.trim() || [data.firstName, data.middleName, data.lastName].filter(Boolean).join(' ')).trim();
+
       const employee = await tx.employee.create({
         data: {
           employeeId: finalEmpId,
           firstName: data.firstName.trim(),
+          middleName: data.middleName?.trim() || null,
           lastName: data.lastName.trim(),
+          fullName: computedFullName,
           email: data.email.trim().toLowerCase(),
-          phone: data.phone?.trim() || null,
+          employeeGrade: (data.employeeGrade || data.grade || '').trim() || null,
+          gender: data.gender?.trim() || null,
+          bloodGroup: data.bloodGroup?.trim() || null,
+          phone: primaryPhone,
+          alternatePhone: altPhone,
           resumeUrl: data.resumeUrl?.trim() || null,
           dob: parsedDob && !isNaN(parsedDob.getTime()) ? parsedDob : null,
-          address: data.address?.trim() || null,
+          address: resAddress,
+          residentAddress: resAddress,
+          presentAddress: presAddress,
           departmentId: data.departmentId,
           designation: data.designation.trim(),
           managerId: data.managerId || null,
